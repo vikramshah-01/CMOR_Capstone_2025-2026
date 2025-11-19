@@ -135,19 +135,17 @@ def generate_custom_plot():
     output = request.args.get('output')
 
     baseline_values = {
-        "HR": 100,    # Heart Rate (beats/min)
-        "UVR": 45,    # Upper Vascular Resistance (Wood Units)
-        "LVR": 35,    # Lower Vascular Resistance (Wood Units)
-        "PVR": 10,    # Pulmonary Vascular Resistance (Wood Units)
-        "S_sa": 0.99, # Systemic Artery Saturation (%)
-        "Hb": 15,     # Hemoglobin (g/dL)
-        "CVO2u": 70,  # Upper Body Oxygen Consumption (mL O2/min)
-        "CVO2l": 50,  # Lower Body Oxygen Consumption (mL O2/min)
-        "C_d": 2 / 100,  # Compliance at Diastole
-        "C_s": 0.01 / 100,  # Compliance at Systole
-        "C_sa": 1 / 135,  # Compliance of Systemic Artery/Total Blood Volume
-        "C_pv": 30 / 135, # Compliance of Pulmonary Vein/Total Blood Volume
-        "C_pa": 2 / 135   # Compliance of Pulmonary Artery/Total Blood Volume
+            "HR": 100,
+            "C_dia": 0.02,
+            "C_sys": 0.01,
+            "C_A": 1/135,
+            "C_V": 30/135,
+            "R_p": 10,
+            "R_s": 80,
+            "V_total": 5.0,
+            "EF": 0.55,
+            "Hb": 15,
+            "CVO2": 200,
     }
 
     # Initial guesses for solvers
@@ -168,19 +166,38 @@ def generate_custom_plot():
             params[input1] = val1
             params[input2] = val2
 
-            # # Solve for flows and oxygen saturation
-            # try:
-            #     results = complete_results(
-            #         params["UVR"], params["LVR"], params["PVR"], params["HR"],
-            #         params["C_d"], params["C_s"], params["C_sa"], params["C_pv"], params["C_pa"],
-            #         z0_flows, params["S_sa"], params["CVO2u"], params["CVO2l"], params["Hb"], z0_sat
-            #     )
-                
-            #     # Store the result in the grid
-            #     Z[j, i] = results[output]
+            # Solve Norwood model
+            Q_s, Q_p, P_a, P_v = flow_pressure_solver_1(
+                params["C_dia"],
+                params["C_sys"],
+                params["C_A"],
+                params["C_V"],
+                params["HR"],
+                params["R_p"],
+                params["R_s"],
+                params["V_total"]
+)
 
-            # except Exception as e:
-            #     Z[j, i] = np.nan  # If the solver fails, store NaN
+            # Compute saturation if needed
+            if output in ["S_m", "S_sv", "D20"]:
+                S_m, S_sv, D20 = saturation_solver(
+                    Q_s, Q_p, params["Hb"], params["CVO2"]
+                )
+            if output == "Q_s":
+                Z[j, i] = Q_s
+            elif output == "Q_p":
+                Z[j, i] = Q_p
+            elif output == "P_a":
+                Z[j, i] = P_a
+            elif output == "P_v":
+                Z[j, i] = P_v
+            elif output == "S_m":
+                Z[j, i] = S_m
+            elif output == "S_sv":
+                Z[j, i] = S_sv
+            elif output == "D20":
+                Z[j, i] = D20
+
 
     # Plot the heatmap
     plt.figure(figsize=(10, 7.5))

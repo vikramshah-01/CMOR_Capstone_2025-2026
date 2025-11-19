@@ -10,16 +10,13 @@
 </head>
 <body>
     <h1>Variable Response Heatmaps</h1>
-    <p> Like the variable response plots, this page shows how variables in our model change when parameters change.<br><br>
+    <p> This page visualizes how our model outputs respond to changes in two parameters at the same time.
 
-        Unlike the plots page, this heatmap page shows how any one variable changes when two parameters change in unison.
-        In a sense, this is a 3D version of the variable response plots feature.<br><br>
-        
-        You can select any two different parameters. We omit the 5 compliance value parameters for simplicity, as they are unlikely to be useful. 
-        Thus, there are 8 (out of the 13) parameters to chose from. Exact values of each parameter are shown on the x- and y-axes.
-         These values again represent a range from 0.5x to 1.5x the baseline. <br><br>
-        
-        You can select one of 6 variables to inspect. The variable value is reflected by color, from blue to red, shown by the sidebar on the right-hand side. <br><br>
+        Unlike the variable response plots, which vary a single parameter, the heatmap displays the value of one selected variable across a grid of two changing parameters—effectively providing a “3D” view of model behavior.
+
+        You can choose any two distinct parameters from a set of eight (excluding the five compliance parameters, which are omitted for clarity). Each axis represents values ranging from 0.5× to 1.5× of the baseline for that parameter.
+
+        You can then select one of six variables to examine. The value of the chosen variable is encoded by color, from lower (blue) to higher (red) values, as indicated by the color bar on the right.
 
     </p>
 
@@ -32,13 +29,16 @@
                 <label for="inputDropdown1">Input 1:</label>
                 <select id="inputDropdown1">
                     <option value="HR">Heart Rate</option>
-                    <option value="UVR">Upper Vascular Resistance</option>
-                    <option value="LVR">Lower Vascular Resistance</option>
-                    <option value="PVR">Pulmonary Vascular Resistance</option>
-                    <option value="S_sa">Systemic Artery Saturation</option>
+                    <option value="C_dia">Diastolic Compliance</option>
+                    <option value="C_sys">Systolic Compliance</option>
+                    <option value="C_A">Arterial Compliance</option>
+                    <option value="C_V">Venous Compliance</option>
+                    <option value="R_p">Pulmonary Resistance</option>
+                    <option value="R_s">Systemic Resistance</option>
+                    <option value="V_total">Total Blood Volume</option>
+                    <option value="EF">Ejection Fraction</option>
                     <option value="Hb">Hemoglobin</option>
-                    <option value="CVO2u">Upper Body Oxygen Consumption</option>
-                    <option value="CVO2l">Lower Body Oxygen Consumption</option>
+                    <option value="CVO2">Oxygen Consumption</option>
                 </select>
             </div>
             <br>
@@ -47,13 +47,16 @@
                 <label for="inputDropdown2">Input 2:</label>
                 <select id="inputDropdown2">
                     <option value="HR">Heart Rate</option>
-                    <option value="UVR">Upper Vascular Resistance</option>
-                    <option value="LVR">Lower Vascular Resistance</option>
-                    <option value="PVR">Pulmonary Vascular Resistance</option>
-                    <option value="S_sa">Systemic Artery Saturation</option>
+                    <option value="C_dia">Diastolic Compliance</option>
+                    <option value="C_sys">Systolic Compliance</option>
+                    <option value="C_A">Arterial Compliance</option>
+                    <option value="C_V">Venous Compliance</option>
+                    <option value="R_p">Pulmonary Resistance</option>
+                    <option value="R_s">Systemic Resistance</option>
+                    <option value="V_total">Total Blood Volume</option>
+                    <option value="EF">Ejection Fraction</option>
                     <option value="Hb">Hemoglobin</option>
-                    <option value="CVO2u">Upper Body Oxygen Consumption</option>
-                    <option value="CVO2l">Lower Body Oxygen Consumption</option>
+                    <option value="CVO2">Oxygen Consumption</option>
                 </select>
             </div>
             <br>
@@ -61,12 +64,13 @@
             <div class="dropdown-container">
                 <label for="outputDropdown">Output:</label>
                 <select id="outputDropdown">
-                    <option value="Q_v">Cardiac Output</option>
-                    <option value="Q_u">Blood Flow into the Upper Body</option>
-                    <option value="Q_l">Blood Flow into the Lower Body</option>
-                    <option value="Q_p">Blood Flow into the Lungs</option>
-                    <option value="P_sa">Pressure of the Systemic Artery</option>
-                    <option value="OER">Oxygen Extraction Ratio</option>
+                    <option value="Q_s">Systemic Flow</option>
+                    <option value="Q_p">Pulmonary Flow</option>
+                    <option value="P_a">Arterial Pressure</option>
+                    <option value="P_v">Venous Pressure</option>
+                    <option value="S_m">Mixed Saturation</option>
+                    <option value="S_sv">Systemic Venous Saturation</option>
+                    <option value="D20">Oxygen Delivery</option>
                 </select>
             </div>
         </div>
