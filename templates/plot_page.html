@@ -10,14 +10,13 @@
 </head>
 <body>
     <h1>Variable Response Plots</h1>
-    <p>Our model of the hemodynamics of a Fontan circulatory system solves for 11 variables using 13 parameters. <br><br>
-        In this page, you can select any one of the 11 variables,
-         plus the Oxygen Extraction Ratio, to generate a 2D plot. 
+    <p>Our model of the hemodynamics of a Norwood circulatory system solves for 8 variables using 10 parameters. <br><br>
+        In this page, you can select any one of the 8 variables, to generate a 2D plot. 
          The plot will display how the selected variable changes (on the y-axis) 
          as each of the 13 parameters changes (on the x-axis). 
-         The x-axis is normalized to represent each parameter as it goes from 0.5x to 2x its baseline value. <br><br>
+         The x-axis is normalized to represent each parameter as it goes from 0.5x to 1.5x its baseline value. <br><br>
 
-         Note: not all variable response plots will show all 13 parameters as not all parameters are relevant for each variable.
+         Note: not all variable response plots will show all parameters as not all parameters are relevant for each variable.
           </p>
 
 
@@ -27,14 +26,14 @@
         <div class="plot-section">
             <!-- Left side: Existing Plot Dropdown -->
             <select id="plotType">
-                <option value="Q_s">Cardiac Output</option>
-                <option value="Q_p">Blood Flow into the Upper Body</option>
-                <option value="Q_total">Blood Flow into the Lower Body</option>
-                <option value="P_a">Blood Flow into the Lungs</option>
-                <option value="P_v">Pressure of the Systemic Artery</option>
-                <option value="S_m">Oxygen Extraction Ratio</option>
-                <option value="S_sv">Pressure of the Pulmonary Vein</option>
-                <option value="OD2">Pressure of the Pulmonary Artery</option>
+                <option value="Q_s">Systemic Flow</option>
+                <option value="Q_p">Pulmonary Flow</option>
+                <option value="Q_total">Total Flow</option>
+                <option value="P_a">Arterial Pressure</option>
+                <option value="P_v">Venous Pressure</option>
+                <option value="S_m">Mixed Oxygen Saturation</option>
+                <option value="S_sv">Systemic Venous Saturation</option>
+                <option value="OD2">Oxygen Delivery</option>
             </select>
             <button id="displayPlotButton">Display Plot</button>
         </div>
