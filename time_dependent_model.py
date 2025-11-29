@@ -115,8 +115,8 @@ def time_dependent_norwood(R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_en
 
     t_vec = np.arange(0, t_end, dt)
     Q_sa = np.full(len(t_vec), np.nan)
-    Q_pa = np.full(len(t_vec), np.nan)
     Q_sv = np.full(len(t_vec), np.nan)
+    Q_pa = np.full(len(t_vec), np.nan)
     Q_pv = np.full(len(t_vec), np.nan)
     P_sa = np.full(len(t_vec), np.nan)
     P_sv = np.full(len(t_vec), np.nan)
@@ -131,8 +131,8 @@ def time_dependent_norwood(R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_en
                         [0, 0, 0, 0, 0, -1, 0, 1],
                         [1, 0, 1, 0, 0, 0, 0, 0],
                         [0, 1, 0, 1, 0, 0, 0, 0],
-                        [-1, 1, 0, 0, C_s/dt, 0, 0, 0],
-                        [0, 0, -1, 1, 0, 0, C_s/dt, 0]])
+                        [-dt, dt, 0, 0, C_s, 0, 0, 0],
+                        [0, 0, -dt, dt, 0, 0, C_p, 0]])
         if i==0:        
             b = np.array([[0],
                         [0],
@@ -140,8 +140,8 @@ def time_dependent_norwood(R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_en
                         [0],
                         [Q_v],
                         [Q_v],
-                        [P_sa_0*C_s/dt],
-                        [P_pa_0*C_p/dt]])
+                        [P_sa_0*C_s],
+                        [P_pa_0*C_p]])
         else:
             b = np.array([[0],
                         [0],
@@ -149,8 +149,8 @@ def time_dependent_norwood(R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_en
                         [0],
                         [Q_v],
                         [Q_v],
-                        [P_sa[i-1]*C_s/dt],
-                        [P_pa[i-1]*C_p/dt]])
+                        [P_sa[i-1]*C_s],
+                        [P_pa[i-1]*C_p]])
         
         x, residuals, rank, s= sp.linalg.lstsq(A, b)
         Q_sa[i] = x[0, 0]
@@ -169,15 +169,16 @@ def time_dependent_norwood(R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_en
 
 def Q_Ao(t):
     T     = 0.0125
-    T_max = 0.0020
-    T_s   = 0.0050
-    Q_max = 28.0
+    T_max = 0.0050
+    T_s   = 0.0080
+    Q_max = 5.0
 
-    if 0.0 <= t <= T_max:
-        return Q_max * t / T_max
-    elif T_max <= t <= T_s:
-        return Q_max * (T_s - t) / (T_s - T_max)
-    elif T_s <= t <= T:
+    t_new = t % T
+    if 0.0 <= t_new <= T_max:
+        return Q_max * t_new / T_max
+    elif T_max <= t_new <= T_s:
+        return Q_max * (T_s - t_new) / (T_s - T_max)
+    elif T_s <= t_new <= T:
         return 0.0
     else:
         return 0.0
