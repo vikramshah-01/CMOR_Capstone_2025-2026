@@ -1,5 +1,6 @@
 # Get Dependencies
 import scipy.optimize
+import numpy as np
 
 # default compliance values
 C_d = 2/100       # 30C_s
@@ -9,14 +10,14 @@ C_pv = 30 * C_sa
 C_pa = 2 * C_sa
 
 # # default inputs
-# UVR = 60
-# LVR = 40
-# PVR = 10
-# HR = 150 
-# S_sa = 0.99 # give narrow interval: .98 - 1 assuming lungs are healthy
-# Hb = 15.0
-# CVO2u = 70
-# CVO2l = 50
+UVR = 60
+LVR = 40
+PVR = 10
+HR = 150 
+S_sa = 0.99 # give narrow interval: .98 - 1 assuming lungs are healthy
+Hb = 15.0
+CVO2u = 70
+CVO2l = 50
 
 # ADD VOLUME VARIABLE/SLIDER
 # Function to update compliance values dynamically for preset conditions

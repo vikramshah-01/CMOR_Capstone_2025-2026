@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time-Dependent Plots</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+  <h1>Time-Dependent Norwood Plots</h1>
+  <p>Select a plot type and click <b>Display Plot</b>. (Uses default parameters.)</p>
+
+  <div class="plot-container">
+    <div class="plot-section">
+      <select id="plotType">
+        <option value="flows">Flows</option>
+        <option value="pressures">Pressures</option>
+        <option value="aortic">Aortic Flow Input</option>
+      </select>
+      <button id="displayPlotButton">Display Plot</button>
+    </div>
+
+    <div id="plotContainer"></div>
+  </div>
+
+  <a href="/"><button>Back to Home</button></a>
+
+  <!-- IMPORTANT: load the timedep JS, not plot_script.js -->
+  <script src="/static/timedep_plot_script.js"></script>
+</body>
+</html>
