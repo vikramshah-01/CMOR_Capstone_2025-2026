@@ -7,23 +7,70 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
-<body>
+<body class="timedep-page">
   <h1>Time-Dependent Norwood Plots</h1>
-  <p>Select a plot type and click <b>Display Plot</b>. (Uses default parameters.)</p>
+<p>Select a plot type, set parameters, then click <b>Display Plot</b>.</p>
 
-  <div class="plot-container">
-    <div class="plot-section">
-      <select id="plotType">
-        <option value="flows">Flows</option>
-        <option value="pressures">Pressures</option>
-        <option value="aortic">Aortic Flow Input</option>
-      </select>
-      <button id="displayPlotButton">Display Plot</button>
+<div class="plot-container">
+  <div class="plot-section">
+
+    <label for="plotType"><b>Plot type</b></label>
+    <select id="plotType">
+      <option value="flows">Flows</option>
+      <option value="pressures">Pressures</option>
+      <option value="aortic">Aortic Flow Input</option>
+    </select>
+
+    <hr style="margin: 16px 0; width: 100%;" />
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 650px;">
+      <div>
+        <label>R_s</label>
+        <input id="R_s" type="number" step="any" value="17.5">
+      </div>
+      <div>
+        <label>R_p</label>
+        <input id="R_p" type="number" step="any" value="1.79">
+      </div>
+
+      <div>
+        <label>R_BTS</label>
+        <input id="R_BTS" type="number" step="any" value="5.0">
+      </div>
+      <div>
+        <label>C_s</label>
+        <input id="C_s" type="number" step="any" value="0.01">
+      </div>
+
+      <div>
+        <label>C_p</label>
+        <input id="C_p" type="number" step="any" value="0.08">
+      </div>
+      <div>
+        <label>P_sa_0</label>
+        <input id="P_sa_0" type="number" step="any" value="20.0">
+      </div>
+
+      <div>
+        <label>P_pa_0</label>
+        <input id="P_pa_0" type="number" step="any" value="20.0">
+      </div>
+      <div>
+        <label>t_end (min)</label>
+        <input id="t_end" type="number" step="any" value="0.1">
+      </div>
+
+      <div>
+        <label>dt (min)</label>
+        <input id="dt" type="number" step="any" value="0.00001">
+      </div>
     </div>
 
-    <div id="plotContainer"></div>
+    <button id="displayPlotButton" style="margin-top: 12px;">Display Plot</button>
   </div>
 
+  <div id="plotContainer"></div>
+</div>
   <a href="/"><button>Back to Home</button></a>
 
   <!-- IMPORTANT: load the timedep JS, not plot_script.js -->

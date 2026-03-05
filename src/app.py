@@ -10,6 +10,7 @@ from arterial_and_venous_compliance_solver import arterial_and_venous_compliance
 from systolic_and_diastolic_compliance_solver import systolic_and_diastolic_compliance_solver
 from norwood_plots import yaxis_class1, yaxis_class2
 from time_dependent_model import time_dependent_norwood, Q_Ao
+# from time_dependent_model import time_dependent_norwood
 
 import os
 import numpy as np
@@ -246,16 +247,28 @@ updated_compliance_values = {
 
 @app.route('/generate_timedep_plot')
 def generate_timedep_plot():
-    # defaults only
-    R_s   = 17.5
-    R_p   = 1.79
-    R_BTS = 5.0
-    C_s   = 0.01
-    C_p   = 0.08
-    P_sa_0 = 20.0
-    P_pa_0 = 20.0
-    t_end = 0.1
-    dt    = 0.00001
+    def qfloat(name, default):
+        raw = request.args.get(name, None)
+        if raw is None or raw == "":
+            return float(default)
+        return float(raw)
+
+    # defaults (same as your current hard-coded values)
+    R_s    = qfloat("R_s",   17.5)
+    R_p    = qfloat("R_p",   1.79)
+    R_BTS  = qfloat("R_BTS", 5.0)
+    C_s    = qfloat("C_s",   0.01)
+    C_p    = qfloat("C_p",   0.08)
+    P_sa_0 = qfloat("P_sa_0", 20.0)
+    P_pa_0 = qfloat("P_pa_0", 20.0)
+    t_end  = qfloat("t_end", 0.1)
+    dt     = qfloat("dt",    0.00001)
+
+    # simple guardrails (time_dependent_norwood already raises for <=0 too :contentReference[oaicite:4]{index=4})
+    if t_end <= 0 or dt <= 0:
+        return jsonify({"error": "t_end and dt must be > 0"}), 400
+    if dt >= t_end:
+        return jsonify({"error": "dt must be smaller than t_end"}), 400
 
     plot_type = request.args.get("plot_type", "flows")
 

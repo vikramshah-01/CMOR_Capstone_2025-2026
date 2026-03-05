@@ -305,3 +305,22 @@ Preset Button Highlighting
   margin-top: 0;
   padding: 15px;
 }
+
+/* =======================
+ Time-Dependent Plot Page
+======================= */
+
+.timedep-page input[type="number"]{
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.timedep-page #displayPlotButton{
+  margin-bottom: 30px;
+}
+
+.timedep-page .plot-section > div {
+  margin-left: auto;
+  margin-right: auto;
+}
