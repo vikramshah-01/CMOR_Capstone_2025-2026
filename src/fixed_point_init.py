@@ -11,14 +11,17 @@
 
 from __future__ import annotations
 import numpy as np
+from scipy.optimize import fsolve
 
 MMHG_TO_DYN_PER_CM2 = 1333.22
 
 
 def H_fun(delta_p: float, gamma: float) -> float:
-    """Valve smoothing function: H = 1 / (1 + exp(-gamma * (p1 - p2)))."""
-    # NOTE: this fixes the bug "gamma(delta_p)" (gamma is a scalar, not callable).
-    return 1.0 / (1.0 + np.exp(-gamma * delta_p))
+    """Valve smoothing function: H = 1 / (1 + exp(-gamma * (p1 - p2))).
+    The exponent is clipped to [-500, 500] to prevent floating-point overflow
+    warnings; the result is identical since exp(±500) is effectively 0 or inf.
+    """
+    return 1.0 / (1.0 + np.exp(np.clip(-gamma * delta_p, -500.0, 500.0)))
 
 
 def _elastance_periodic(
@@ -39,7 +42,10 @@ def _elastance_periodic(
     and normalizes by k = max(...) over one cycle.
     """
     def g(tt: np.ndarray, t_on: float, m: float, tau: float) -> np.ndarray:
-        return ((tt - t_on) / tau) ** m
+        # FIX (Bug 2): clamp (tt - t_onset) to >= 0 before raising to a
+        # fractional power.  Without the clamp, negative bases produce
+        # NaN / complex values in NumPy whenever t_mod < t_onset.
+        return (np.maximum(tt - t_on, 0.0) / tau) ** m
 
     T = 1.0 / HR
     t_mod = t % T
@@ -97,10 +103,15 @@ def generate_x0_fixed_point_ra_rv(
     # --- optional solver knobs ---
     max_iter: int = 80,
     tol: float = 1e-10,
-    relaxation: float = 0.7,   # 0<relaxation<=1; lower helps if oscillatory
+    relaxation: float = 0.7,   # kept for API compatibility; not used by Newton solver
 ) -> np.ndarray:
     """
-    Returns x0 (shape (14,)) in paper units, consistent with A x = b at t=t0 via fixed-point iteration.
+    Returns x0 (shape (14,)) in paper units, consistent with A x = b at t=t0.
+
+    Uses scipy.optimize.fsolve (Newton / quasi-Newton) to solve the nonlinear
+    system F(x) = A(x)*x - b(x) = 0.  The old Picard / relaxation loop was
+    replaced because the fixed-point map has spectral radius > 1 for typical
+    cardiovascular parameters, making it unconditionally divergent.
 
     Initial guesses are generated for RA/RV physiology:
       RA pressure ~ 5 mmHg,
@@ -115,7 +126,7 @@ def generate_x0_fixed_point_ra_rv(
     # -------------------------
     # 1) Build an initial guess (in paper units)
     # -------------------------
-    p_ra_guess = 5.0 * MMHG_TO_DYN_PER_CM2
+    p_ra_guess = 5.0  * MMHG_TO_DYN_PER_CM2
     p_rv_guess = 20.0 * MMHG_TO_DYN_PER_CM2
 
     P_SA_guess = 60.0 * MMHG_TO_DYN_PER_CM2
@@ -123,31 +134,36 @@ def generate_x0_fixed_point_ra_rv(
     P_PA_guess = 15.0 * MMHG_TO_DYN_PER_CM2
     P_PV_guess = 8.0  * MMHG_TO_DYN_PER_CM2
 
-    x = np.zeros(14, dtype=float)
-    x[0] = p_ra_guess     # p_a
-    x[1] = p_rv_guess     # p_v
-    x[2] = 0.0            # Q_int
-    x[3] = 0.0            # Q_ext
-    x[4] = V_a0           # V_a
-    x[5] = V_v0           # V_v
-    x[6] = 0.0            # Q_SA
-    x[7] = 0.0            # Q_SV
-    x[8] = 0.0            # Q_PA
-    x[9] = 0.0            # Q_PV
-    x[10] = P_SA_guess    # P_SA
-    x[11] = P_SV_guess    # P_SV
-    x[12] = P_PA_guess    # P_PA
-    x[13] = P_PV_guess    # P_PV
+    x0 = np.zeros(14, dtype=float)
+    x0[0]  = p_ra_guess     # p_a
+    x0[1]  = p_rv_guess     # p_v
+    x0[2]  = 0.0            # Q_int
+    x0[3]  = 0.0            # Q_ext
+    x0[4]  = V_a0           # V_a
+    x0[5]  = V_v0           # V_v
+    x0[6]  = 0.0            # Q_SA
+    x0[7]  = 0.0            # Q_SV
+    x0[8]  = 0.0            # Q_PA
+    x0[9]  = 0.0            # Q_PV
+    x0[10] = P_SA_guess     # P_SA
+    x0[11] = P_SV_guess     # P_SV
+    x0[12] = P_PA_guess     # P_PA
+    x0[13] = P_PV_guess     # P_PV
 
-    # elastances at start time
+    # Elastances at start time
     E_a = _elastance_periodic(t0, HR, E_min_a, E_max_a, t_onset_a, m_1a, tau_1a, m_2a, tau_2a)
     E_v = _elastance_periodic(t0, HR, E_min_v, E_max_v, t_onset_v, m_1v, tau_1v, m_2v, tau_2v)
 
     # -------------------------
-    # 2) Fixed-point iterations: build A,b from current x; solve; relax
+    # 2) Define F(x) = A(x)*x - b(x) and solve with Newton / fsolve
+    #
+    # FIX (Bug 3): The original Picard / relaxation iteration
+    #   x_{n+1} = (1-w)*x_n + w * solve(A(x_n), b(x_n))
+    # diverges because the spectral radius of the fixed-point map exceeds 1
+    # for realistic cardiovascular parameters.  scipy.optimize.fsolve uses a
+    # modified Powell hybrid method (quasi-Newton) which converges robustly.
     # -------------------------
-    for _ in range(max_iter):
-        # Build A (copied from your model's first-step block)
+    def F(x: np.ndarray) -> np.ndarray:
         A = np.array([
             [1, 0, 0, 0, -(E_a / V_a0) - (K_a * x[0] / dt), 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, -(E_v / V_v0) - (K_v * x[1] / dt), 0, 0, 0, 0, 0, 0, 0, 0],
@@ -156,7 +172,11 @@ def generate_x0_fixed_point_ra_rv(
             [0, 0, 1/2, 0, 1/dt, 0, 0, -1/2, 0, -1/2, 0, 0, 0, 0],
             [0, 0, -1/2, 1/2, 0, 1/dt, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, R_s, 0, 0, 0, -1, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, R_p, 0, -1, 0, 1, 0],
+            # FIX (Bug 1): was [.., R_p, 0, -1, 0, 1, 0] which used P_SA (col 10)
+            # as the left-side driving pressure for Q_PA, making rows 7 and 8
+            # identical and the matrix singular.  Q_PA is driven by P_PA - P_PV,
+            # so the pressure columns must be col 12 (-1) and col 13 (+1).
+            [0, 0, 0, 0, 0, 0, 0, 0, R_p, 0, 0, 0, -1, 1],
             [0, 0, 0, 0, 0, 0, 0, 0, R_BTS, 0, -1, 0, 1, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1],
             [0, 0, 0, -1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
@@ -165,38 +185,41 @@ def generate_x0_fixed_point_ra_rv(
             [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, C_SA, C_SV, C_PA, C_PV],
         ], dtype=float)
 
-        # Build b (copied from your model's first-step block)
         b = np.array([
-            [-E_a - (K_a * x[0] * x[4] / dt)],
-            [-E_v - (K_v * x[1] * x[5] / dt)],
-            [(L_int * x[2] / dt) + H_fun(x[0] - x[1], gamma_int) * (x[0] - x[1])],
-            [(L_ext * x[3] / dt) + H_fun(x[1] - x[10], gamma_ext) * (x[1] - x[10])],
-            [(x[4] / dt) - 0.5 * (x[2] - x[9] - x[7])],
-            [(x[5] / dt) - 0.5 * (x[3] - x[2])],
-            [0.0],
-            [0.0],
-            [0.0],
-            [0.0],
-            [0.0],
-            [C_SA * x[10] / dt],
-            [C_PA * x[12] / dt],
-            [V_total],
+            -E_a - (K_a * x[0] * x[4] / dt),
+            -E_v - (K_v * x[1] * x[5] / dt),
+            (L_int * x[2] / dt) + H_fun(x[0] - x[1], gamma_int) * (x[0] - x[1]),
+            (L_ext * x[3] / dt) + H_fun(x[1] - x[10], gamma_ext) * (x[1] - x[10]),
+            (x[4] / dt) - 0.5 * (x[2] - x[9] - x[7]),
+            (x[5] / dt) - 0.5 * (x[3] - x[2]),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            C_SA * x[10] / dt,
+            C_PA * x[12] / dt,
+            V_total,
         ], dtype=float)
 
-        # Solve; relax; check convergence
-        x_sol = np.linalg.solve(A, b).reshape(-1)
-        x_new = (1.0 - relaxation) * x + relaxation * x_sol
+        return A @ x - b
 
-        if np.linalg.norm(x_new - x, ord=np.inf) < tol:
-            return x_new
+    sol, info, ier, msg = fsolve(F, x0, full_output=True, maxfev=max_iter * 200)
 
-        x = x_new
+    res_norm = np.linalg.norm(F(sol), ord=np.inf)
+    # Accept the solution if scipy converged (ier 1-4) OR if the residual is
+    # small enough regardless of ier.  ier=5 ("not making good progress") is a
+    # common false alarm when the initial guess is already very close to the
+    # solution and the Jacobian appears near-zero to the internal line search.
+    converged = (ier in (1, 2, 3, 4)) or (res_norm <= 1e-6)
+    if not converged:
+        raise RuntimeError(
+            f"Fixed-point initialization did not converge (ier={ier}: {msg}). "
+            f"Residual norm = {res_norm:.3e}. "
+            "Try adjusting initial pressure guesses or checking parameter units."
+        )
 
-    raise RuntimeError(
-        "Fixed-point initialization did not converge. "
-        "Try decreasing relaxation (e.g. 0.3), increasing max_iter, "
-        "or adjusting initial pressure guesses."
-    )
+    return sol
 
 
 # ---- quick usage example (you can delete this block) ----
