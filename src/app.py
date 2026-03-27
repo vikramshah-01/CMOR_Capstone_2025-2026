@@ -9,6 +9,8 @@ from Norwood_Circulation_Solver_Functions import flow_pressure_solver_1, flow_pr
 from arterial_and_venous_compliance_solver import arterial_and_venous_compliance_solver
 from systolic_and_diastolic_compliance_solver import systolic_and_diastolic_compliance_solver
 from norwood_plots import yaxis_class1, yaxis_class2
+from time_dependent_model import time_dependent_norwood, Q_Ao
+# from time_dependent_model import time_dependent_norwood
 
 import os
 import numpy as np
@@ -18,7 +20,13 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-app = Flask(__name__)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 
 # Ensure you have a folder to save plots
 #PLOTS_FOLDER = 'static/plots'
@@ -36,6 +44,10 @@ def slider():
 @app.route('/plot_page')
 def display_plot():
     return render_template('plot_page.html')
+
+@app.route('/timedep_page')
+def timedep_plot():
+    return render_template('timedep_page.html')
 
 @app.route('/heatmap_page')
 def heatmap():
@@ -232,6 +244,84 @@ updated_compliance_values = {
     "C_pv": C_pv,
     "C_pa": C_pa
     }
+
+@app.route('/generate_timedep_plot')
+def generate_timedep_plot():
+    def qfloat(name, default):
+        raw = request.args.get(name, None)
+        if raw is None or raw == "":
+            return float(default)
+        return float(raw)
+
+    # defaults (same as your current hard-coded values)
+    R_s    = qfloat("R_s",   17.5)
+    R_p    = qfloat("R_p",   1.79)
+    R_BTS  = qfloat("R_BTS", 5.0)
+    C_s    = qfloat("C_s",   0.01)
+    C_p    = qfloat("C_p",   0.08)
+    P_sa_0 = qfloat("P_sa_0", 20.0)
+    P_pa_0 = qfloat("P_pa_0", 20.0)
+    t_end  = qfloat("t_end", 0.1)
+    dt     = qfloat("dt",    0.00001)
+
+    # simple guardrails (time_dependent_norwood already raises for <=0 too :contentReference[oaicite:4]{index=4})
+    if t_end <= 0 or dt <= 0:
+        return jsonify({"error": "t_end and dt must be > 0"}), 400
+    if dt >= t_end:
+        return jsonify({"error": "dt must be smaller than t_end"}), 400
+
+    plot_type = request.args.get("plot_type", "flows")
+
+    (t, Q_sa, Q_sv, Q_pa, Q_pv, P_sa, P_sv, P_pa, P_pv) = time_dependent_norwood(
+        R_s, R_p, R_BTS,
+        C_s, C_p,
+        P_sa_0, P_pa_0,
+        Q_Ao,
+        t_end, dt
+    )
+
+    Q_AO = np.array([Q_Ao(ti) for ti in t])
+
+    fig = plt.figure(figsize=(9,6))
+
+    if plot_type == "flows":
+        plt.plot(t, Q_sa, label="Q_SA")
+        plt.plot(t, Q_sv, label="Q_SV")
+        plt.plot(t, Q_pa, label="Q_PA")
+        plt.plot(t, Q_pv, label="Q_PV")
+        plt.plot(t, Q_AO, "--", label="Q_AO")
+        plt.ylabel("Flow [L/min]")
+        plt.title("Flows")
+
+    elif plot_type == "pressures":
+        plt.plot(t, P_sa, label="P_SA")
+        plt.plot(t, P_sv, label="P_SV")
+        plt.plot(t, P_pa, label="P_PA")
+        plt.plot(t, P_pv, label="P_PV")
+        plt.ylabel("Pressure [mmHg]")
+        plt.title("Pressures")
+
+    elif plot_type == "aortic":
+        plt.plot(t, Q_AO, label="Q_AO")
+        plt.ylabel("Flow [L/min]")
+        plt.title("Aortic Flow")
+
+    else:
+        plt.close(fig)
+        return jsonify({"error": "Invalid plot type"}), 400
+
+    plt.xlabel("Time [min]")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    img = io.BytesIO()
+    fig.savefig(img, format="png", bbox_inches="tight")
+    img.seek(0)
+    plot_data = base64.b64encode(img.getvalue()).decode("utf-8")
+    plt.close(fig)
+
+    return jsonify({"plot": plot_data})
 
 @app.route('/apply_preset')
 def apply_preset():

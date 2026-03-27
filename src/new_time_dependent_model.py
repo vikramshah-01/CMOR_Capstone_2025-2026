@@ -18,7 +18,7 @@ def time_dependent_norwood(t0, tf, dt, x0, V_a0, V_v0, K_a, K_v, gamma_int, gamm
     '''
 
     def H_fun(delta_p, gamma):
-        return 1/(1+np.exp(-gamma(delta_p)))
+        return 1/(1+np.exp(-gamma*(delta_p)))
     
 
     
@@ -106,7 +106,7 @@ def time_dependent_norwood(t0, tf, dt, x0, V_a0, V_v0, K_a, K_v, gamma_int, gamm
         [0, 0, 1/2, 0, 1/dt, 0, 0, -1/2, 0, -1/2, 0, 0, 0, 0],
         [0, 0, -1/2, 1/2, 0, 1/dt, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, R_s, 0, 0, 0, -1, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, R_p, 0, -1, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, R_p, 0, 0, 0, -1, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, R_BTS, 0, -1, 0, 1, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1],
         [0, 0, 0, -1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
