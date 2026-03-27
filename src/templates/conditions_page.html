@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simulate Clinical Conditions</title>
+    <title>Simulate Drug Effects</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='styles.css') }}"
@@ -11,46 +11,57 @@
   </head>
 
   <body class="three-column-layout">
-    <h1>Simulate Clinical Conditions</h1>
+    <h1>Simulate Drug Effects</h1>
 
-    <!-- ✅ Your original description (kept) -->
     <p>
-      This page allows you to simulate common clinical conditions in Norwood
-      Circulation patients. The adjustable parameters reflect physiological
-      factors that can be influenced by clinical interventions such as
-      milrinone, epinephrine, and vasodilators. After making any desired
-      adjustments, click Submit. The resulting table compares patient vitals
-      with and without the selected condition, helping to visualize the
-      physiological effects of common clinical conditions more clearly.
+      This page allows you to simulate the hemodynamic influence of vasoactive
+      and pulmonary vasodilator drugs in Norwood circulation patients. The
+      preset drug options adjust vascular resistance parameters based on the
+      comparison chart. After making any desired adjustments, click Submit. The
+      resulting table compares patient vitals with and without the selected drug
+      effect, helping visualize how each medication may alter systemic and
+      pulmonary circulation.
     </p>
 
-    <!-- Buttons for Preset Conditions -->
     <div class="button-container">
       <button
         class="preset-btn"
         type="button"
-        onclick="Conditions.applyCondition('lowPreload')"
+        onclick="Conditions.applyCondition('nicardipine')"
       >
-        Low Preload
+        Nicardipine
       </button>
       <button
         class="preset-btn"
         type="button"
-        onclick="Conditions.applyCondition('lungProblem')"
+        onclick="Conditions.applyCondition('milrinone')"
       >
-        Pulmonary Disease
+        Milrinone
       </button>
       <button
         class="preset-btn"
         type="button"
-        onclick="Conditions.applyCondition('heartFailure')"
+        onclick="Conditions.applyCondition('sildenafil')"
       >
-        Heart Failure
+        Sildenafil
+      </button>
+      <button
+        class="preset-btn"
+        type="button"
+        onclick="Conditions.applyCondition('ino')"
+      >
+        iNO
+      </button>
+      <button
+        class="preset-btn"
+        type="button"
+        onclick="Conditions.applyCondition('epoprostenol')"
+      >
+        Epoprostenol
       </button>
     </div>
 
     <div class="flex-container">
-      <!-- LEFT COLUMN -->
       <div class="left-column">
         <img
           src="/static/new_fontan_diagram.png"
@@ -65,7 +76,6 @@
         </map>
       </div>
 
-      <!-- MIDDLE COLUMN: Inputs -->
       <div class="middle-column">
         <div class="card">
           <h2>Adjust Parameters</h2>
@@ -196,29 +206,29 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Results -->
-    <div class="right-column">
+      <div class="right-column">
+        <div style="text-align: center; margin-bottom: 15px">
+          <button type="button" onclick="Conditions.toggleResults(true)">
+            Show Results
+          </button>
 
-    <!-- Toggle Buttons -->
-    <div style="text-align:center; margin-bottom:15px;">
-        <button type="button" onclick="Conditions.toggleResults(true)">
-        Show Results
-        </button>
+          <button
+            type="button"
+            id="hideResultsBtn"
+            onclick="Conditions.toggleResults(false)"
+            style="display: none; margin-left: 10px"
+          >
+            Hide Results
+          </button>
+        </div>
 
-        <button type="button" id="hideResultsBtn"
-                onclick="Conditions.toggleResults(false)"
-                style="display:none; margin-left:10px;">
-        Hide Results
-        </button>
+        <div
+          id="conditionResults"
+          style="display: none; margin-top: 10px"
+        ></div>
+      </div>
     </div>
 
-    <!-- Results Container (hidden initially) -->
-    <div id="conditionResults"
-        style="display:none; margin-top:10px;"></div>
-
-    </div>
-
-    <!-- Confirmation Modal -->
     <div id="confirmation-modal" class="modal" style="display: none">
       <div class="modal-content">
         <span id="modal-close" class="close">&times;</span>
@@ -226,7 +236,6 @@
       </div>
     </div>
 
-    <!-- Diagram pop-up modal (kept for your layout) -->
     <div id="popup-modal" class="modal" style="display: none">
       <div class="modal-content">
         <span id="diagram-close" class="close">&times;</span>
@@ -238,59 +247,74 @@
       <a href="/"><button type="button">Back to Home</button></a>
     </div>
 
-    <!-- ImageMapResizer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/image-map-resizer/1.0.10/js/imageMapResizer.min.js"></script>
 
     <script>
-      // IMPORTANT: Do NOT include /static/script.js on this page.
-      // It previously caused `condition=undefined` by overwriting functions.
-
       const Conditions = (() => {
-        // ---- State ----
-        let baselineData = null; // Normal outputs computed on page load
-        let baselineInputs = null; // Normal input values (the original defaults)
+        let baselineData = null;
+        let baselineInputs = null;
 
         function toggleResults(show) {
-        const container = el("conditionResults");
-        const hideBtn = el("hideResultsBtn");
+          const container = el("conditionResults");
+          const hideBtn = el("hideResultsBtn");
 
-        if (!container) return;
+          if (!container) return;
 
-        if (show) {
+          if (show) {
             container.style.display = "block";
             if (hideBtn) hideBtn.style.display = "inline-block";
-        } else {
+          } else {
             container.style.display = "none";
             if (hideBtn) hideBtn.style.display = "none";
+          }
         }
-}
-        // ---- Preset vitals (what the sliders become when you click the condition) ----
+
         const vitalsByCondition = {
-          lowPreload: {
+          nicardipine: {
             HR: 100,
-            UVR: 45,
-            LVR: 35,
-            PVR: 10,
+            UVR: 31.5,
+            LVR: 24.5,
+            PVR: 9.5,
             S_sa: 0.99,
             Hb: 15,
             CVO2u: 70,
             CVO2l: 50,
           },
-          lungProblem: {
+          milrinone: {
             HR: 100,
-            UVR: 45,
-            LVR: 35,
-            PVR: 27,
+            UVR: 37.13,
+            LVR: 28.88,
+            PVR: 7.75,
             S_sa: 0.99,
             Hb: 15,
             CVO2u: 70,
             CVO2l: 50,
           },
-          heartFailure: {
+          sildenafil: {
             HR: 100,
-            UVR: 45,
-            LVR: 35,
-            PVR: 10,
+            UVR: 40.5,
+            LVR: 31.5,
+            PVR: 7.0,
+            S_sa: 0.99,
+            Hb: 15,
+            CVO2u: 70,
+            CVO2l: 50,
+          },
+          ino: {
+            HR: 100,
+            UVR: 45.0,
+            LVR: 35.0,
+            PVR: 5.5,
+            S_sa: 0.99,
+            Hb: 15,
+            CVO2u: 70,
+            CVO2l: 50,
+          },
+          epoprostenol: {
+            HR: 100,
+            UVR: 38.25,
+            LVR: 29.75,
+            PVR: 6.0,
             S_sa: 0.99,
             Hb: 15,
             CVO2u: 70,
@@ -298,7 +322,6 @@
           },
         };
 
-        // ---- DOM helpers ----
         function el(id) {
           return document.getElementById(id);
         }
@@ -332,7 +355,6 @@
           return payload;
         }
 
-        // ---- Formatting ----
         function formatValue(v, key = "") {
           if (v === null || v === undefined) return "—";
           const num = Number(v);
@@ -340,13 +362,8 @@
 
           const abs = Math.abs(num);
 
-          // Saturations and OER are fractions
           if (key.startsWith("S_") || key === "OER") return num.toFixed(2);
-
-          // Flows/pressures: 2 decimals
           if (abs >= 1) return num.toFixed(2);
-
-          // Smaller: 4 decimals; very tiny: scientific
           if (abs >= 0.01) return num.toFixed(4);
           return num.toExponential(2);
         }
@@ -373,12 +390,28 @@
           return sign + d.toExponential(2);
         }
 
-        // ---- UI helpers ----
         function showConfirmationModal(condition) {
           const modal = el("confirmation-modal");
           const text = el("modal-text");
-          if (text)
-            text.textContent = `Preset "${condition}" applied successfully!`;
+
+          const messages = {
+            nicardipine:
+              "Nicardipine preset applied. This mainly lowers systemic vascular resistance with relatively little pulmonary effect.",
+            milrinone:
+              "Milrinone preset applied. This lowers both systemic and pulmonary vascular resistance with a balanced effect.",
+            sildenafil:
+              "Sildenafil preset applied. This has a stronger pulmonary effect than systemic effect.",
+            ino: "iNO preset applied. This has little to no systemic effect and strongly lowers pulmonary vascular resistance.",
+            epoprostenol:
+              "Epoprostenol preset applied. This lowers both systemic and pulmonary vascular resistance, with a stronger pulmonary effect overall.",
+          };
+
+          if (text) {
+            text.textContent =
+              messages[condition] ||
+              `Preset "${condition}" applied successfully!`;
+          }
+
           if (modal) modal.style.display = "block";
         }
 
@@ -396,11 +429,10 @@
             s.textContent = "Normal baseline not initialized yet.";
           } else {
             s.textContent =
-              "Baseline: Normal (original inputs on page load). Click a condition to compare.";
+              "Baseline: Normal (original inputs on page load). Click a drug to compare.";
           }
         }
 
-        // ---- Backend calls ----
         async function applyPreset(condition) {
           const res = await fetch(
             `/apply_preset?condition=${encodeURIComponent(condition)}`,
@@ -420,30 +452,27 @@
           if (!res.ok) throw new Error(data.error || "Computation failed");
           return data;
         }
+
         const VAR_LABELS = {
           Q_v: "Total Venous Return (L/min)",
           Q_u: "Upper Body Flow (L/min)",
           Q_l: "Lower Body Flow (L/min)",
           Q_p: "Pulmonary Flow (L/min)",
-
           P_sa: "Systemic Arterial Pressure (mmHg)",
           P_pa: "Pulmonary Arterial Flow (mmHg)",
           P_pv: "Pulmonary Venous Pressure (mmHg)",
-
           S_pa: "Pulmonary Arterial Saturation (fraction)",
           S_pv: "Pulmonary Venous Saturation (fraction)",
           S_svu: "Upper Body Venous Saturation (fraction)",
           S_svl: "Lower Body Venous Saturation (fraction)",
-
           OER: "Oxygen Extraction Ratio (fraction)",
-
           C_d: "Diastolic Ventricular Compliance (mL/mmHg)",
           C_s: "Systolic Ventricular Compliance (mL/mmHg)",
           C_sa: "Systemic Arterial Compliance (mL/mmHg)",
           C_pv: "Pulmonary Venous Compliance (mL/mmHg)",
           C_pa: "Pulmonary Arterial Compliance (mL/mmHg)",
         };
-        // ---- Rendering: Normal vs Condition vs Δ ----
+
         function renderComparison(currentData, currentLabel = "Condition") {
           const container = el("conditionResults");
           if (!container) return;
@@ -471,7 +500,6 @@
           const base = baselineData;
           const safeLabel = String(currentLabel || "Condition");
 
-          // build rows
           const rowsHtml = keys
             .map((k, idx) => {
               const baseV = base ? base[k] : null;
@@ -479,17 +507,15 @@
 
               const deltaStr = formatDelta(currV, baseV, k);
 
-              // delta coloring
               let deltaStyle = "";
               if (deltaStr !== "—") {
                 const d = Number(currV) - Number(baseV);
                 if (Number.isFinite(d)) {
-                  if (d > 0) deltaStyle = "color:#1a7f37; font-weight:600;"; // green
-                  if (d < 0) deltaStyle = "color:#b42318; font-weight:600;"; // red
+                  if (d > 0) deltaStyle = "color:#1a7f37; font-weight:600;";
+                  if (d < 0) deltaStyle = "color:#b42318; font-weight:600;";
                 }
               }
 
-              // subtle highlighting for clinically “high” values (optional)
               let currStyle = "";
               const currNum = Number(currV);
               if (k === "P_pa" && Number.isFinite(currNum) && currNum > 20)
@@ -555,23 +581,18 @@
         `;
         }
 
-        // ---- Actions ----
         function setVitals(condition) {
           const v = vitalsByCondition[condition];
           if (!v) return;
 
-          for (const key in v) setField(key, v[key]);
+          for (const key in v) {
+            setField(key, v[key]);
+          }
 
-          // Disable/enable PVR for lungProblem
           const pvr = el("PVR");
           if (pvr) {
-            if (condition === "lungProblem") {
-              pvr.disabled = true;
-              pvr.classList.add("disabled-slider");
-            } else {
-              pvr.disabled = false;
-              pvr.classList.remove("disabled-slider");
-            }
+            pvr.disabled = false;
+            pvr.classList.remove("disabled-slider");
           }
         }
 
@@ -585,11 +606,9 @@
             setVitals(condition);
             highlightSelectedButton(condition);
 
-            // apply backend compliance changes
             await applyPreset(condition);
             showConfirmationModal(condition);
 
-            // compute outputs after condition applied
             const payload = payloadFromInputs();
             const curr = await calculate(payload);
 
@@ -616,22 +635,14 @@
           }
         }
 
-        // ---- Init: compute NORMAL baseline immediately using original inputs ----
         async function initBaseline() {
-          // snapshot original inputs (what you want as “Normal”)
           baselineInputs = payloadFromInputs();
-
-          // compute baseline outputs (assumes backend compliances are at default startup state)
           baselineData = await calculate(baselineInputs);
-
           updateBaselineStatus();
-
-          // show table with Normal vs Normal initially (Δ = 0)
           renderComparison(baselineData, "Normal");
         }
 
         function init() {
-          // image map resize
           const image = el("clickable-image");
           if (image) {
             image.style.width = "100%";
@@ -639,12 +650,10 @@
           }
           if (typeof imageMapResize === "function") imageMapResize();
 
-          // prevent navigation for <area>
           document.querySelectorAll("area").forEach((area) => {
             area.addEventListener("click", (ev) => ev.preventDefault());
           });
 
-          // modal close
           const modalClose = el("modal-close");
           const modal = el("confirmation-modal");
           if (modalClose && modal)
@@ -656,11 +665,9 @@
             if (ev.target === modal) modal.style.display = "none";
           });
 
-          // form submit
           const form = el("parameterForm");
           if (form) form.addEventListener("submit", onSubmit);
 
-          // baseline
           initBaseline().catch((err) => {
             console.error(err);
             alert("Failed to initialize baseline. Check server logs.");

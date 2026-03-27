@@ -20,7 +20,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(
     __name__,
@@ -328,40 +328,87 @@ def apply_preset():
     global updated_compliance_values
     condition = request.args.get("condition")
 
-    presets = {
-        "lowPreload": {
-            # compliances all increased by 20% of normal
-            "HR": 100, "UVR": 45, "LVR": 35, "PVR": 10, "S_sa": 0.99, "Hb": 15, "CVO2u": 70, "CVO2l": 50,
-            "C_d": 0.02, "C_s": 0.01/100, "C_sa": 2/225, "C_pv": 4/15, "C_pa": 4/225  
-        },
-        "lungProblem": {
-            # no compliance changes
-            "HR": 100, "UVR": 45, "LVR": 35, "PVR": 27, "S_sa": 0.99, "Hb": 15, "CVO2u": 70, "CVO2l": 50,
-            "C_d": 0.02241, "C_s": 0.00008625, "C_sa": 0.005115, "C_pv": 0.2986, "C_pa": 0.01481
-        },
-        "heartFailure": {
-            # C_d decreased by 20%, C_s increased by 20%, other compliances remain the same
-            "HR": 100, "UVR": 45, "LVR": 35, "PVR": 10, "S_sa": 0.99, "Hb": 15, "CVO2u": 70, "CVO2l": 50,
-            "C_d": 0.016, "C_s": 0.00008, "C_sa": 1/135, "C_pv": 30/135, "C_pa": 2/135  
-        } 
+    # Baseline values taken from your current preset setup
+    baseline = {
+        "HR": 100,
+        "UVR": 45.0,
+        "LVR": 35.0,
+        "PVR": 10.0,
+        "S_sa": 0.99,
+        "Hb": 15.0,
+        "CVO2u": 70.0,
+        "CVO2l": 50.0,
+        "C_d": 0.02241,
+        "C_s": 0.00008625,
+        "C_sa": 0.005115,
+        "C_pv": 0.2986,
+        "C_pa": 0.01481
     }
 
-    if condition in presets:
-        preset_values = presets[condition]
+    # Midpoints from the chart
+    drug_effects = {
+        "nicardipine": {
+            "svr_reduction": 0.30,   # 20–40%
+            "pvr_reduction": 0.05,   # 0–10%
+            "selectivity": "Poor"
+        },
+        "milrinone": {
+            "svr_reduction": 0.175,  # 10–25%
+            "pvr_reduction": 0.225,  # 15–30%
+            "selectivity": "Moderate"
+        },
+        "sildenafil": {
+            "svr_reduction": 0.10,   # 5–15%
+            "pvr_reduction": 0.30,   # 20–40%
+            "selectivity": "Good"
+        },
+        "ino": {
+            "svr_reduction": 0.00,   # ~0%
+            "pvr_reduction": 0.45,   # 30–60%
+            "selectivity": "Excellent"
+        },
+        "epoprostenol": {
+            "svr_reduction": 0.15,   # 10–20%
+            "pvr_reduction": 0.40,   # 30–50%
+            "selectivity": "Good"
+        }
+    }
 
-        # updates compliances only if they exist in the preset
-        updated_compliance_values.update({
-            "C_d": preset_values["C_d"],
-            "C_s": preset_values["C_s"],
-            "C_sa": preset_values["C_sa"],
-            "C_pv": preset_values["C_pv"],
-            "C_pa": preset_values["C_pa"]
-        })
+    if condition not in drug_effects:
+        return jsonify({"error": "Invalid drug selection"}), 400
 
-        print(f"/PRESET Updated compliance values for {condition}: {updated_compliance_values}")
+    effect = drug_effects[condition]
 
-        return jsonify({"message": f"Preset {condition} applied!", "compliance_values": updated_compliance_values})
-    return jsonify({"error": "Invalid condition"}), 400
+    preset_values = {
+        "HR": baseline["HR"],
+        "UVR": round(baseline["UVR"] * (1 - effect["svr_reduction"]), 2),
+        "LVR": round(baseline["LVR"] * (1 - effect["svr_reduction"]), 2),
+        "PVR": round(baseline["PVR"] * (1 - effect["pvr_reduction"]), 2),
+        "S_sa": baseline["S_sa"],
+        "Hb": baseline["Hb"],
+        "CVO2u": baseline["CVO2u"],
+        "CVO2l": baseline["CVO2l"],
+        "C_d": baseline["C_d"],
+        "C_s": baseline["C_s"],
+        "C_sa": baseline["C_sa"],
+        "C_pv": baseline["C_pv"],
+        "C_pa": baseline["C_pa"],
+        "drug": condition,
+        "selectivity": effect["selectivity"]
+    }
+
+    # Keep compliances unchanged for now since the chart does not specify them
+    updated_compliance_values.update({
+        "C_d": preset_values["C_d"],
+        "C_s": preset_values["C_s"],
+        "C_sa": preset_values["C_sa"],
+        "C_pv": preset_values["C_pv"],
+        "C_pa": preset_values["C_pa"]
+    })
+
+    print(f"/PRESET Applied drug preset for {condition}: {preset_values}")
+
+    return jsonify(preset_values)
 
 @app.route("/calculate_condition_values", methods=["POST"])
 def calculate_condition_values():
