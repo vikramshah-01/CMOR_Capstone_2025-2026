@@ -745,14 +745,18 @@ const Conditions = (() => {
     bindButtons();
 
     const form = el("parameterForm");
+    const hrInput = el("HR");
+
     if (form) {
       form.addEventListener("submit", onSubmit);
     }
 
-    initializeBaseline().catch((error) => {
-      console.error(error);
-      alert(`Failed to initialize baseline: ${error.message}`);
-    });
+    if (form && hrInput) {
+      initializeBaseline().catch((error) => {
+        console.error(error);
+        alert(`Failed to initialize baseline: ${error.message}`);
+      });
+    }
   }
 
   return {
@@ -763,14 +767,6 @@ const Conditions = (() => {
 })();
 
 document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("parameterForm");
-  const hrInput = document.getElementById("HR");
-
-  if (!form || !hrInput) {
-    console.log("Conditions page not detected; skipping Conditions.init()");
-    return;
-  }
-
   window.Conditions = Conditions;
   Conditions.init();
 });
