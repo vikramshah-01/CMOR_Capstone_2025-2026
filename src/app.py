@@ -325,52 +325,51 @@ def generate_timedep_plot():
 
 @app.route('/apply_preset')
 def apply_preset():
-    global updated_compliance_values
-    condition = request.args.get("condition")
+    """
+    Return report-style baseline inputs with drug effects applied to R_s and R_p.
+    Compatible with the report-style HTML/JS fields:
+    HR, EF, C_dia, C_A, C_V, R_s, R_p, V_total, Hb, CVO2
+    """
+    condition = request.args.get("condition", "").strip().lower()
 
-    # Baseline values taken from your current preset setup
     baseline = {
-        "HR": 100,
-        "UVR": 45.0,
-        "LVR": 35.0,
-        "PVR": 10.0,
-        "S_sa": 0.99,
+        "HR": 100.0,
+        "EF": 0.55,
+        "C_dia": 0.02,
+        "C_A": 1 / 135,
+        "C_V": 30 / 135,
+        "R_s": 80.0,
+        "R_p": 10.0,
+        "V_total": 5.0,
         "Hb": 15.0,
-        "CVO2u": 70.0,
-        "CVO2l": 50.0,
-        "C_d": 0.02241,
-        "C_s": 0.00008625,
-        "C_sa": 0.005115,
-        "C_pv": 0.2986,
-        "C_pa": 0.01481
+        "CVO2": 200.0,
     }
 
-    # Midpoints from the chart
     drug_effects = {
         "nicardipine": {
-            "svr_reduction": 0.30,   # 20–40%
-            "pvr_reduction": 0.05,   # 0–10%
-            "selectivity": "Poor"
+            "svr_reduction": 0.30,
+            "pvr_reduction": 0.05,
+            "selectivity": "Poor pulmonary selectivity"
         },
         "milrinone": {
-            "svr_reduction": 0.175,  # 10–25%
-            "pvr_reduction": 0.225,  # 15–30%
-            "selectivity": "Moderate"
+            "svr_reduction": 0.175,
+            "pvr_reduction": 0.225,
+            "selectivity": "Moderate pulmonary selectivity"
         },
         "sildenafil": {
-            "svr_reduction": 0.10,   # 5–15%
-            "pvr_reduction": 0.30,   # 20–40%
-            "selectivity": "Good"
+            "svr_reduction": 0.10,
+            "pvr_reduction": 0.30,
+            "selectivity": "Good pulmonary selectivity"
         },
         "ino": {
-            "svr_reduction": 0.00,   # ~0%
-            "pvr_reduction": 0.45,   # 30–60%
-            "selectivity": "Excellent"
+            "svr_reduction": 0.00,
+            "pvr_reduction": 0.45,
+            "selectivity": "Excellent pulmonary selectivity"
         },
         "epoprostenol": {
-            "svr_reduction": 0.15,   # 10–20%
-            "pvr_reduction": 0.40,   # 30–50%
-            "selectivity": "Good"
+            "svr_reduction": 0.15,
+            "pvr_reduction": 0.40,
+            "selectivity": "Good pulmonary selectivity"
         }
     }
 
@@ -380,102 +379,67 @@ def apply_preset():
     effect = drug_effects[condition]
 
     preset_values = {
-        "HR": baseline["HR"],
-        "UVR": round(baseline["UVR"] * (1 - effect["svr_reduction"]), 2),
-        "LVR": round(baseline["LVR"] * (1 - effect["svr_reduction"]), 2),
-        "PVR": round(baseline["PVR"] * (1 - effect["pvr_reduction"]), 2),
-        "S_sa": baseline["S_sa"],
-        "Hb": baseline["Hb"],
-        "CVO2u": baseline["CVO2u"],
-        "CVO2l": baseline["CVO2l"],
-        "C_d": baseline["C_d"],
-        "C_s": baseline["C_s"],
-        "C_sa": baseline["C_sa"],
-        "C_pv": baseline["C_pv"],
-        "C_pa": baseline["C_pa"],
+        **baseline,
+        "R_s": round(baseline["R_s"] * (1 - effect["svr_reduction"]), 4),
+        "R_p": round(baseline["R_p"] * (1 - effect["pvr_reduction"]), 4),
         "drug": condition,
         "selectivity": effect["selectivity"]
     }
 
-    # Keep compliances unchanged for now since the chart does not specify them
-    updated_compliance_values.update({
-        "C_d": preset_values["C_d"],
-        "C_s": preset_values["C_s"],
-        "C_sa": preset_values["C_sa"],
-        "C_pv": preset_values["C_pv"],
-        "C_pa": preset_values["C_pa"]
-    })
-
-    print(f"/PRESET Applied drug preset for {condition}: {preset_values}")
-
     return jsonify(preset_values)
+
 
 @app.route("/calculate_condition_values", methods=["POST"])
 def calculate_condition_values():
-    global updated_compliance_values  # Ensure the latest values are used
-    print(f"/CALCULATE compliance values: {updated_compliance_values}")
+    data = request.json
+    print("Received /calculate_condition_values payload:", data)
 
-    data = request.json # get slider values
     if not data:
-        return jsonify({"error": "No slider values receive."}), 400
-       
-    # Extract slider values from frontend
-    HR = float(data.get("HR"))
-    UVR = float(data.get("UVR"))
-    LVR = float(data.get("LVR"))
-    PVR = float(data.get("PVR"))
-    S_sa = float(data.get("S_sa"))
-    Hb = float(data.get("Hb"))
-    CVO2u = float(data.get("CVO2u"))
-    CVO2l = float(data.get("CVO2l"))
+        return jsonify({"error": "No input data received."}), 400
 
-    # Use the latest compliance values
-    C_d = updated_compliance_values["C_d"]
-    C_s = updated_compliance_values["C_s"]
-    C_sa = updated_compliance_values["C_sa"]
-    C_pv = updated_compliance_values["C_pv"]
-    C_pa = updated_compliance_values["C_pa"]
+    try:
+        HR = float(data.get("HR"))
+        EF = float(data.get("EF"))
+        C_dia = float(data.get("C_dia"))
+        C_A = float(data.get("C_A"))
+        C_V = float(data.get("C_V"))
+        R_s = float(data.get("R_s"))
+        R_p = float(data.get("R_p"))
+        V_total = float(data.get("V_total"))
+        Hb = float(data.get("Hb"))
+        CVO2 = float(data.get("CVO2"))
 
-    print(f"C_d: {C_d}, C_s: {C_s}, C_sa: {C_sa}, C_pv: {C_pv}, C_pa: {C_pa}")
+        print("Parsed inputs:", HR, EF, C_dia, C_A, C_V, R_s, R_p, V_total, Hb, CVO2)
 
-    # Solve for new vitals
-    param_flows = (UVR, LVR, PVR, HR, C_d, C_s, C_sa, C_pv, C_pa)
-    z0_flows = (3.1, 1.5, 1.5, 3.2, 75, 26, 2)
+        C_sys = 0.01
 
-    result_flows = scipy.optimize.fsolve(fun_flows, z0_flows, args=param_flows, full_output=True, xtol=1e-4)
-    (Q_v, Q_u, Q_l, Q_p, P_sa, P_pa, P_pv) = result_flows[0]
+        Q_s, Q_p, P_a, P_v = flow_pressure_solver_1(
+            C_dia, C_sys, C_A, C_V, HR, R_p, R_s, V_total
+        )
+        print("Flow outputs:", Q_s, Q_p, P_a, P_v)
 
-    param_sat = (Q_p, Q_u, Q_l, S_sa, CVO2u, CVO2l, Hb)
-    z0_sat = (0.55, 0.99, 0.55, 0.55)
+        S_m, S_sv, OD2 = saturation_solver(Q_s, Q_p, Hb, CVO2)
+        print("Sat outputs:", S_m, S_sv, OD2)
 
-    result_O2_sat = scipy.optimize.fsolve(fun_sat, z0_sat, args=param_sat, full_output=True, xtol=1e-4)
-    (S_pa, S_pv, S_svu, S_svl) = result_O2_sat[0]
+        Q_RV = Q_s + Q_p
+        Qp_Qs = Q_p / Q_s if Q_s != 0 else None
 
-    OER = (Q_u * (S_sa - S_svu) + Q_l * (S_sa - S_svl)) / ((Q_u + Q_l) * S_sa)
+        return jsonify({
+            "Q_s": round(Q_s, 2),
+            "Q_p": round(Q_p, 2),
+            "Q_RV": round(Q_RV, 2),
+            "P_a": round(P_a, 2),
+            "P_v": round(P_v, 2),
+            "S_m": round(S_m, 4),
+            "S_sv": round(S_sv, 4),
+            "OD2": round(OD2, 2),
+            "Qp_Qs": round(Qp_Qs, 4) if Qp_Qs is not None else None
+        })
 
-    # Send back computed values
-    computed_values = {
-        "Q_v": round(Q_v, 2),
-        "Q_u": round(Q_u, 2),
-        "Q_l": round(Q_l, 2),
-        "Q_p": round(Q_p, 2),
-        "P_sa": round(P_sa, 2),
-        "P_pa": round(P_pa, 2),
-        "P_pv": round(P_pv, 2),
-        "S_pa": round(S_pa, 2),
-        "S_pv": round(S_pv, 2),
-        "S_svu": round(S_svu, 2),
-        "S_svl": round(S_svl, 2),
-        "OER": round(OER, 2),
-        "C_d": C_d,
-        "C_s": C_s,
-        "C_sa": C_sa,
-        "C_pv": C_pv,
-        "C_pa": C_pa
-    }
-
-    print(f"Computed values sent: {computed_values}")
-    return jsonify(computed_values)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to calculate condition values: {str(e)}"}), 400
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

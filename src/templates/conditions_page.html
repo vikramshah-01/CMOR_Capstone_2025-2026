@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simulate Drug Effects</title>
+    <title>Clinical Drug Comparison</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='styles.css') }}"
@@ -11,53 +11,37 @@
   </head>
 
   <body class="three-column-layout">
-    <h1>Simulate Drug Effects</h1>
+    <h1>Clinical Drug Comparison</h1>
 
     <p>
-      This page allows you to simulate the hemodynamic influence of vasoactive
-      and pulmonary vasodilator drugs in Norwood circulation patients. The
-      preset drug options adjust vascular resistance parameters based on the
-      comparison chart. After making any desired adjustments, click Submit. The
-      resulting table compares patient vitals with and without the selected drug
-      effect, helping visualize how each medication may alter systemic and
-      pulmonary circulation.
+      This page allows you to compare vasoactive and pulmonary vasodilator drug
+      effects using the steady-state Norwood circulation notation from the
+      report. Each drug modifies systemic resistance R<sub>s</sub> and pulmonary
+      resistance R<sub>p</sub> according to the comparison chart. After
+      selecting a drug or adjusting parameters manually, click Submit to compare
+      the resulting flows, pressures, saturations, and oxygen delivery against
+      the baseline state.
     </p>
 
     <div class="button-container">
-      <button
-        class="preset-btn"
-        type="button"
-        onclick="Conditions.applyCondition('nicardipine')"
-      >
+      <button class="preset-btn" type="button" data-condition="nicardipine">
         Nicardipine
       </button>
-      <button
-        class="preset-btn"
-        type="button"
-        onclick="Conditions.applyCondition('milrinone')"
-      >
+      <button class="preset-btn" type="button" data-condition="milrinone">
         Milrinone
       </button>
-      <button
-        class="preset-btn"
-        type="button"
-        onclick="Conditions.applyCondition('sildenafil')"
-      >
+      <button class="preset-btn" type="button" data-condition="sildenafil">
         Sildenafil
       </button>
-      <button
-        class="preset-btn"
-        type="button"
-        onclick="Conditions.applyCondition('ino')"
-      >
-        iNO
-      </button>
-      <button
-        class="preset-btn"
-        type="button"
-        onclick="Conditions.applyCondition('epoprostenol')"
-      >
+      <button class="preset-btn" type="button" data-condition="ino">iNO</button>
+      <button class="preset-btn" type="button" data-condition="epoprostenol">
         Epoprostenol
+      </button>
+      <button class="preset-btn" type="button" id="compareAllBtn">
+        Compare All Drugs
+      </button>
+      <button class="preset-btn" type="button" id="resetBaselineBtn">
+        Reset to Baseline
       </button>
     </div>
 
@@ -66,13 +50,13 @@
         <img
           src="/static/new_fontan_diagram.png"
           usemap="#image-map"
-          alt="Patient Vitals Diagram"
+          alt="Norwood circulation diagram"
           class="interactive-image"
           id="clickable-image"
         />
 
         <map name="image-map">
-          <!-- ✅ PASTE YOUR EXISTING <area ...> LIST HERE UNCHANGED -->
+          <!-- Keep your existing area tags here if you are using them -->
         </map>
       </div>
 
@@ -81,112 +65,142 @@
           <h2>Adjust Parameters</h2>
 
           <form id="parameterForm">
-            <label for="HR">Heart Rate (beats/min):</label>
+            <label for="HR">Heart Rate, HR (beats/min):</label>
             <input
               type="number"
               id="HR"
               name="HR"
               min="50"
-              max="150"
+              max="180"
               step="1"
               value="100"
               required
             />
             <br /><br />
 
-            <label for="UVR">Upper Vascular Resistance (Wood Units):</label>
+            <label for="EF">Ejection Fraction, EF (fraction):</label>
             <input
               type="number"
-              id="UVR"
-              name="UVR"
-              min="30"
-              max="60"
-              step="1"
-              value="45"
+              id="EF"
+              name="EF"
+              min="0.10"
+              max="1.00"
+              step="0.01"
+              value="0.55"
               required
             />
             <br /><br />
 
-            <label for="LVR">Lower Vascular Resistance (Wood Units):</label>
+            <label for="C_dia"
+              >Diastolic Compliance, C<sub>dia</sub> (mL/mmHg):</label
+            >
             <input
               type="number"
-              id="LVR"
-              name="LVR"
-              min="20"
+              id="C_dia"
+              name="C_dia"
+              min="0.001"
+              max="1"
+              step="0.001"
+              value="0.02"
+              required
+            />
+            <br /><br />
+
+            <label for="C_A"
+              >Arterial Compliance, C<sub>A</sub> (mL/mmHg):</label
+            >
+            <input
+              type="number"
+              id="C_A"
+              name="C_A"
+              min="0.0001"
+              max="1"
+              step="0.0001"
+              value="0.0074"
+              required
+            />
+            <br /><br />
+
+            <label for="C_V">Venous Compliance, C<sub>V</sub> (mL/mmHg):</label>
+            <input
+              type="number"
+              id="C_V"
+              name="C_V"
+              min="0.001"
+              max="5"
+              step="0.0001"
+              value="0.2222"
+              required
+            />
+            <br /><br />
+
+            <label for="R_s"
+              >Systemic Resistance, R<sub>s</sub> (Wood Units):</label
+            >
+            <input
+              type="number"
+              id="R_s"
+              name="R_s"
+              min="0.1"
+              max="200"
+              step="0.1"
+              value="80"
+              required
+            />
+            <br /><br />
+
+            <label for="R_p"
+              >Pulmonary Resistance, R<sub>p</sub> (Wood Units):</label
+            >
+            <input
+              type="number"
+              id="R_p"
+              name="R_p"
+              min="0.1"
               max="50"
-              step="1"
-              value="35"
-              required
-            />
-            <br /><br />
-
-            <label for="PVR">Pulmonary Vascular Resistance (Wood Units):</label>
-            <input
-              type="number"
-              id="PVR"
-              name="PVR"
-              min="5"
-              max="45"
-              step="1"
+              step="0.1"
               value="10"
               required
             />
             <br /><br />
 
-            <label for="S_sa"
-              >Systemic Artery Saturation (fraction, 0.98–1.00):</label
+            <label for="V_total"
+              >Total Blood Volume, V<sub>total</sub> (L):</label
             >
             <input
               type="number"
-              id="S_sa"
-              name="S_sa"
-              min="0.98"
-              max="1"
-              step="0.01"
-              value="0.99"
+              id="V_total"
+              name="V_total"
+              min="0.1"
+              max="20"
+              step="0.1"
+              value="5.0"
               required
             />
             <br /><br />
 
-            <label for="Hb">Hemoglobin (g/dL):</label>
+            <label for="Hb">Hemoglobin, Hb (g/dL):</label>
             <input
               type="number"
               id="Hb"
               name="Hb"
-              min="7"
-              max="22"
+              min="1"
+              max="25"
               step="0.1"
-              value="15"
+              value="15.0"
               required
             />
             <br /><br />
 
-            <label for="CVO2u"
-              >Oxygen Consumption of the Upper Body (mL O₂/min):</label
-            >
+            <label for="CVO2">Oxygen Consumption, CVO2 (mL/m²/min):</label>
             <input
               type="number"
-              id="CVO2u"
-              name="CVO2u"
-              min="35"
-              max="105"
+              id="CVO2"
+              name="CVO2"
+              min="1"
+              max="500"
               step="1"
-              value="70"
-              required
-            />
-            <br /><br />
-
-            <label for="CVO2l"
-              >Oxygen Consumption of the Lower Body (mL O₂/min):</label
-            >
-            <input
-              type="number"
-              id="CVO2l"
-              name="CVO2l"
-              min="25"
-              max="75"
-              step="1"
-              value="50"
+              value="200"
               required
             />
             <br /><br />
@@ -195,13 +209,17 @@
               class="action-buttons"
               style="margin-top: 20px; text-align: center"
             >
-              <button type="submit">Submit</button>
+              <button type="submit" id="conditionSubmitBtn">Submit</button>
             </div>
           </form>
 
           <p
             id="baselineStatus"
             style="margin-top: 12px; font-size: 0.95em"
+          ></p>
+          <p
+            id="selectedDrugStatus"
+            style="margin-top: 8px; font-size: 0.95em"
           ></p>
         </div>
       </div>
@@ -226,6 +244,7 @@
           id="conditionResults"
           style="display: none; margin-top: 10px"
         ></div>
+        <div id="allDrugResults" style="display: none; margin-top: 20px"></div>
       </div>
     </div>
 
@@ -248,437 +267,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/image-map-resizer/1.0.10/js/imageMapResizer.min.js"></script>
-
-    <script>
-      const Conditions = (() => {
-        let baselineData = null;
-        let baselineInputs = null;
-
-        function toggleResults(show) {
-          const container = el("conditionResults");
-          const hideBtn = el("hideResultsBtn");
-
-          if (!container) return;
-
-          if (show) {
-            container.style.display = "block";
-            if (hideBtn) hideBtn.style.display = "inline-block";
-          } else {
-            container.style.display = "none";
-            if (hideBtn) hideBtn.style.display = "none";
-          }
-        }
-
-        const vitalsByCondition = {
-          nicardipine: {
-            HR: 100,
-            UVR: 31.5,
-            LVR: 24.5,
-            PVR: 9.5,
-            S_sa: 0.99,
-            Hb: 15,
-            CVO2u: 70,
-            CVO2l: 50,
-          },
-          milrinone: {
-            HR: 100,
-            UVR: 37.13,
-            LVR: 28.88,
-            PVR: 7.75,
-            S_sa: 0.99,
-            Hb: 15,
-            CVO2u: 70,
-            CVO2l: 50,
-          },
-          sildenafil: {
-            HR: 100,
-            UVR: 40.5,
-            LVR: 31.5,
-            PVR: 7.0,
-            S_sa: 0.99,
-            Hb: 15,
-            CVO2u: 70,
-            CVO2l: 50,
-          },
-          ino: {
-            HR: 100,
-            UVR: 45.0,
-            LVR: 35.0,
-            PVR: 5.5,
-            S_sa: 0.99,
-            Hb: 15,
-            CVO2u: 70,
-            CVO2l: 50,
-          },
-          epoprostenol: {
-            HR: 100,
-            UVR: 38.25,
-            LVR: 29.75,
-            PVR: 6.0,
-            S_sa: 0.99,
-            Hb: 15,
-            CVO2u: 70,
-            CVO2l: 50,
-          },
-        };
-
-        function el(id) {
-          return document.getElementById(id);
-        }
-
-        function setField(id, value) {
-          const e = el(id);
-          if (e) e.value = value;
-        }
-
-        function getNumber(id) {
-          const e = el(id);
-          if (!e) return null;
-          const v = Number(e.value);
-          return Number.isFinite(v) ? v : null;
-        }
-
-        function payloadFromInputs() {
-          const payload = {
-            HR: getNumber("HR"),
-            UVR: getNumber("UVR"),
-            LVR: getNumber("LVR"),
-            PVR: getNumber("PVR"),
-            S_sa: getNumber("S_sa"),
-            Hb: getNumber("Hb"),
-            CVO2u: getNumber("CVO2u"),
-            CVO2l: getNumber("CVO2l"),
-          };
-          for (const k in payload) {
-            if (payload[k] === null) throw new Error(`Invalid value for ${k}`);
-          }
-          return payload;
-        }
-
-        function formatValue(v, key = "") {
-          if (v === null || v === undefined) return "—";
-          const num = Number(v);
-          if (!Number.isFinite(num)) return String(v);
-
-          const abs = Math.abs(num);
-
-          if (key.startsWith("S_") || key === "OER") return num.toFixed(2);
-          if (abs >= 1) return num.toFixed(2);
-          if (abs >= 0.01) return num.toFixed(4);
-          return num.toExponential(2);
-        }
-
-        function formatDelta(curr, base, key = "") {
-          if (
-            curr === null ||
-            curr === undefined ||
-            base === null ||
-            base === undefined
-          )
-            return "—";
-          const c = Number(curr),
-            b = Number(base);
-          if (!Number.isFinite(c) || !Number.isFinite(b)) return "—";
-          const d = c - b;
-
-          const sign = d >= 0 ? "+" : "";
-          const abs = Math.abs(d);
-
-          if (key.startsWith("S_") || key === "OER") return sign + d.toFixed(2);
-          if (abs >= 1) return sign + d.toFixed(2);
-          if (abs >= 0.01) return sign + d.toFixed(4);
-          return sign + d.toExponential(2);
-        }
-
-        function showConfirmationModal(condition) {
-          const modal = el("confirmation-modal");
-          const text = el("modal-text");
-
-          const messages = {
-            nicardipine:
-              "Nicardipine preset applied. This mainly lowers systemic vascular resistance with relatively little pulmonary effect.",
-            milrinone:
-              "Milrinone preset applied. This lowers both systemic and pulmonary vascular resistance with a balanced effect.",
-            sildenafil:
-              "Sildenafil preset applied. This has a stronger pulmonary effect than systemic effect.",
-            ino: "iNO preset applied. This has little to no systemic effect and strongly lowers pulmonary vascular resistance.",
-            epoprostenol:
-              "Epoprostenol preset applied. This lowers both systemic and pulmonary vascular resistance, with a stronger pulmonary effect overall.",
-          };
-
-          if (text) {
-            text.textContent =
-              messages[condition] ||
-              `Preset "${condition}" applied successfully!`;
-          }
-
-          if (modal) modal.style.display = "block";
-        }
-
-        function highlightSelectedButton(condition) {
-          document.querySelectorAll(".preset-btn").forEach((btn) => {
-            const isSelected = btn.getAttribute("onclick")?.includes(condition);
-            btn.classList.toggle("selected", Boolean(isSelected));
-          });
-        }
-
-        function updateBaselineStatus() {
-          const s = el("baselineStatus");
-          if (!s) return;
-          if (!baselineData) {
-            s.textContent = "Normal baseline not initialized yet.";
-          } else {
-            s.textContent =
-              "Baseline: Normal (original inputs on page load). Click a drug to compare.";
-          }
-        }
-
-        async function applyPreset(condition) {
-          const res = await fetch(
-            `/apply_preset?condition=${encodeURIComponent(condition)}`,
-          );
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Failed to apply preset");
-          return data;
-        }
-
-        async function calculate(payload) {
-          const res = await fetch("/calculate_condition_values", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Computation failed");
-          return data;
-        }
-
-        const VAR_LABELS = {
-          Q_v: "Total Venous Return (L/min)",
-          Q_u: "Upper Body Flow (L/min)",
-          Q_l: "Lower Body Flow (L/min)",
-          Q_p: "Pulmonary Flow (L/min)",
-          P_sa: "Systemic Arterial Pressure (mmHg)",
-          P_pa: "Pulmonary Arterial Flow (mmHg)",
-          P_pv: "Pulmonary Venous Pressure (mmHg)",
-          S_pa: "Pulmonary Arterial Saturation (fraction)",
-          S_pv: "Pulmonary Venous Saturation (fraction)",
-          S_svu: "Upper Body Venous Saturation (fraction)",
-          S_svl: "Lower Body Venous Saturation (fraction)",
-          OER: "Oxygen Extraction Ratio (fraction)",
-          C_d: "Diastolic Ventricular Compliance (mL/mmHg)",
-          C_s: "Systolic Ventricular Compliance (mL/mmHg)",
-          C_sa: "Systemic Arterial Compliance (mL/mmHg)",
-          C_pv: "Pulmonary Venous Compliance (mL/mmHg)",
-          C_pa: "Pulmonary Arterial Compliance (mL/mmHg)",
-        };
-
-        function renderComparison(currentData, currentLabel = "Condition") {
-          const container = el("conditionResults");
-          if (!container) return;
-
-          const keys = [
-            "Q_v",
-            "Q_u",
-            "Q_l",
-            "Q_p",
-            "P_sa",
-            "P_pa",
-            "P_pv",
-            "S_pa",
-            "S_pv",
-            "S_svu",
-            "S_svl",
-            "OER",
-            "C_d",
-            "C_s",
-            "C_sa",
-            "C_pv",
-            "C_pa",
-          ];
-
-          const base = baselineData;
-          const safeLabel = String(currentLabel || "Condition");
-
-          const rowsHtml = keys
-            .map((k, idx) => {
-              const baseV = base ? base[k] : null;
-              const currV = currentData ? currentData[k] : null;
-
-              const deltaStr = formatDelta(currV, baseV, k);
-
-              let deltaStyle = "";
-              if (deltaStr !== "—") {
-                const d = Number(currV) - Number(baseV);
-                if (Number.isFinite(d)) {
-                  if (d > 0) deltaStyle = "color:#1a7f37; font-weight:600;";
-                  if (d < 0) deltaStyle = "color:#b42318; font-weight:600;";
-                }
-              }
-
-              let currStyle = "";
-              const currNum = Number(currV);
-              if (k === "P_pa" && Number.isFinite(currNum) && currNum > 20)
-                currStyle = "color:#b42318; font-weight:700;";
-              if (k === "OER" && Number.isFinite(currNum) && currNum > 0.4)
-                currStyle = "color:#b7791f; font-weight:700;";
-
-              const zebra =
-                idx % 2 === 0 ? "background:#fafafa;" : "background:#ffffff;";
-
-              return `
-            <tr style="${zebra}">
-                <td style="padding:8px 10px; border-bottom:1px solid #eee;">
-                <div style="font-weight:600;">${VAR_LABELS[k] || k}</div>
-                <div style="font-size:12px; color:#666; margin-top:2px;">${k}</div>
-                </td>
-                <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums;">
-                ${formatValue(baseV, k)}
-                </td>
-                <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums; ${currStyle}">
-                ${formatValue(currV, k)}
-                </td>
-                <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums; ${deltaStyle}">
-                ${deltaStr}
-                </td>
-            </tr>
-            `;
-            })
-            .join("");
-
-          container.innerHTML = `
-            <div class="card" style="padding:16px;">
-            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
-                <div>
-                <h2 style="margin:0;">Results Comparison</h2>
-                <div style="margin-top:6px; color:#666; font-size:13px;">
-                    Baseline: <b>Normal</b> &nbsp; • &nbsp; Current: <b>${safeLabel}</b>
-                </div>
-                </div>
-            </div>
-
-            <div style="margin-top:14px; overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; min-width:720px;">
-                <thead>
-                    <tr>
-                    <th style="text-align:left; padding:10px; border-bottom:2px solid #ddd; background:#f4f4f5;">Variable</th>
-                    <th style="text-align:right; padding:10px; border-bottom:2px solid #ddd; background:#f4f4f5;">Normal</th>
-                    <th style="text-align:right; padding:10px; border-bottom:2px solid #ddd; background:#f4f4f5;">${safeLabel}</th>
-                    <th style="text-align:right; padding:10px; border-bottom:2px solid #ddd; background:#f4f4f5;">Δ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-                </table>
-            </div>
-
-            <details style="margin-top:12px;">
-                <summary style="cursor:pointer;">Raw JSON (current)</summary>
-                <pre style="white-space:pre-wrap; margin-top:8px;">${JSON.stringify(currentData, null, 2)}</pre>
-            </details>
-            </div>
-        `;
-        }
-
-        function setVitals(condition) {
-          const v = vitalsByCondition[condition];
-          if (!v) return;
-
-          for (const key in v) {
-            setField(key, v[key]);
-          }
-
-          const pvr = el("PVR");
-          if (pvr) {
-            pvr.disabled = false;
-            pvr.classList.remove("disabled-slider");
-          }
-        }
-
-        async function applyCondition(condition) {
-          try {
-            if (!baselineData) {
-              alert("Baseline not ready yet. Refresh the page and try again.");
-              return;
-            }
-
-            setVitals(condition);
-            highlightSelectedButton(condition);
-
-            await applyPreset(condition);
-            showConfirmationModal(condition);
-
-            const payload = payloadFromInputs();
-            const curr = await calculate(payload);
-
-            renderComparison(curr, condition);
-          } catch (err) {
-            console.error(err);
-            alert(err.message || "Condition failed");
-          }
-        }
-
-        async function onSubmit(e) {
-          e.preventDefault();
-          try {
-            if (!baselineData) {
-              alert("Baseline not ready yet. Refresh the page and try again.");
-              return;
-            }
-            const payload = payloadFromInputs();
-            const curr = await calculate(payload);
-            renderComparison(curr, "Custom Inputs");
-          } catch (err) {
-            console.error(err);
-            alert(err.message || "Submit failed");
-          }
-        }
-
-        async function initBaseline() {
-          baselineInputs = payloadFromInputs();
-          baselineData = await calculate(baselineInputs);
-          updateBaselineStatus();
-          renderComparison(baselineData, "Normal");
-        }
-
-        function init() {
-          const image = el("clickable-image");
-          if (image) {
-            image.style.width = "100%";
-            image.style.height = "auto";
-          }
-          if (typeof imageMapResize === "function") imageMapResize();
-
-          document.querySelectorAll("area").forEach((area) => {
-            area.addEventListener("click", (ev) => ev.preventDefault());
-          });
-
-          const modalClose = el("modal-close");
-          const modal = el("confirmation-modal");
-          if (modalClose && modal)
-            modalClose.addEventListener(
-              "click",
-              () => (modal.style.display = "none"),
-            );
-          window.addEventListener("click", (ev) => {
-            if (ev.target === modal) modal.style.display = "none";
-          });
-
-          const form = el("parameterForm");
-          if (form) form.addEventListener("submit", onSubmit);
-
-          initBaseline().catch((err) => {
-            console.error(err);
-            alert("Failed to initialize baseline. Check server logs.");
-          });
-        }
-
-        return { init, applyCondition, toggleResults };
-      })();
-
-      document.addEventListener("DOMContentLoaded", () => Conditions.init());
-      window.Conditions = Conditions;
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
   </body>
 </html>
