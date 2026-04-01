@@ -1,12 +1,15 @@
 // =============================================
 // Clinical Drug Comparison Page
-// Steady-state notation aligned with report
+// Graphs for single-drug comparison
+// Table + graph for compare-all
 // =============================================
 
 const Conditions = (() => {
   let baselineInputs = null;
   let baselineData = null;
   let selectedDrug = null;
+  let singleComparisonChart = null;
+  let allDrugComparisonChart = null;
 
   const drugEffects = {
     nicardipine: {
@@ -51,16 +54,18 @@ const Conditions = (() => {
   };
 
   const VAR_LABELS = {
-    Q_s: "Systemic Flow, Qs (L/min)",
-    Q_p: "Pulmonary Flow, Qp (L/min)",
-    Q_RV: "Right Ventricle Flow, QRV (L/min)",
-    P_a: "Arterial Pressure, Pa (mmHg)",
-    P_v: "Venous Pressure, Pv (mmHg)",
+    Q_s: "Systemic Flow, Qs",
+    Q_p: "Pulmonary Flow, Qp",
+    Q_RV: "Right Ventricle Flow, QRV",
+    P_a: "Arterial Pressure, Pa",
+    P_v: "Venous Pressure, Pv",
     S_m: "Mixed Saturation, Smixed",
     S_sv: "Systemic Venous Saturation, SSV",
     Qp_Qs: "Flow Ratio, Qp/Qs",
     OD2: "Oxygen Delivery",
   };
+
+  const GRAPH_KEYS = ["Q_s", "Q_p", "Q_RV", "P_a", "P_v", "Qp_Qs", "OD2"];
 
   function el(id) {
     return document.getElementById(id);
@@ -141,6 +146,17 @@ const Conditions = (() => {
     return sign + d.toExponential(2);
   }
 
+  function percentChange(curr, base) {
+    const c = Number(curr);
+    const b = Number(base);
+
+    if (!Number.isFinite(c) || !Number.isFinite(b) || b === 0) {
+      return null;
+    }
+
+    return ((c - b) / Math.abs(b)) * 100;
+  }
+
   function highlightSelectedButton(condition) {
     document.querySelectorAll(".preset-btn").forEach((btn) => {
       const isSelected = btn.dataset.condition === condition;
@@ -186,8 +202,9 @@ const Conditions = (() => {
 
     window.addEventListener("click", (event) => {
       if (modal && event.target === modal) modal.style.display = "none";
-      if (popupModal && event.target === popupModal)
+      if (popupModal && event.target === popupModal) {
         popupModal.style.display = "none";
+      }
     });
   }
 
@@ -268,8 +285,6 @@ const Conditions = (() => {
   }
 
   async function calculate(payload) {
-    console.log("Calling /calculate_condition_values with:", payload);
-
     const response = await fetch("/calculate_condition_values", {
       method: "POST",
       headers: {
@@ -279,8 +294,6 @@ const Conditions = (() => {
     });
 
     const rawText = await response.text();
-    console.log("Response status:", response.status);
-    console.log("Raw response:", rawText);
 
     let data;
     try {
@@ -306,61 +319,26 @@ const Conditions = (() => {
     return data;
   }
 
+  function destroyCharts() {
+    if (singleComparisonChart) {
+      singleComparisonChart.destroy();
+      singleComparisonChart = null;
+    }
+    if (allDrugComparisonChart) {
+      allDrugComparisonChart.destroy();
+      allDrugComparisonChart = null;
+    }
+  }
+
   function renderComparison(currentData, currentLabel = "Custom Inputs") {
     const container = el("conditionResults");
     if (!container || !baselineData) return;
 
-    const keys = [
-      "Q_s",
-      "Q_p",
-      "Q_RV",
-      "P_a",
-      "P_v",
-      "S_m",
-      "S_sv",
-      "Qp_Qs",
-      "OD2",
-    ];
-
-    const rowsHtml = keys
-      .map((key, idx) => {
-        const baseVal = baselineData[key];
-        const currVal = currentData[key];
-        const delta = formatDelta(currVal, baseVal, key);
-
-        let deltaStyle = "";
-        const numericDelta = Number(currVal) - Number(baseVal);
-        if (Number.isFinite(numericDelta)) {
-          if (numericDelta > 0) deltaStyle = "color:#1a7f37; font-weight:600;";
-          if (numericDelta < 0) deltaStyle = "color:#b42318; font-weight:600;";
-        }
-
-        const zebra =
-          idx % 2 === 0 ? "background:#fafafa;" : "background:#ffffff;";
-
-        return `
-          <tr style="${zebra}">
-            <td style="padding:8px 10px; border-bottom:1px solid #eee;">
-              <div style="font-weight:600;">${VAR_LABELS[key] || key}</div>
-              <div style="font-size:12px; color:#666; margin-top:2px;">${key}</div>
-            </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums;">
-              ${formatValue(baseVal, key)}
-            </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums;">
-              ${formatValue(currVal, key)}
-            </td>
-            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-variant-numeric: tabular-nums; ${deltaStyle}">
-              ${delta}
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
+    destroyCharts();
 
     container.innerHTML = `
       <div class="card" style="padding:16px;">
-        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div>
             <h2 style="margin:0;">Results Comparison</h2>
             <div style="margin-top:6px; color:#666; font-size:13px;">
@@ -369,7 +347,11 @@ const Conditions = (() => {
           </div>
         </div>
 
-        <div style="margin-top:14px; overflow-x:auto;">
+        <div style="height:420px;">
+          <canvas id="singleComparisonCanvas"></canvas>
+        </div>
+
+        <div style="margin-top:16px; overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; min-width:720px;">
             <thead>
               <tr>
@@ -380,19 +362,102 @@ const Conditions = (() => {
               </tr>
             </thead>
             <tbody>
-              ${rowsHtml}
+              ${GRAPH_KEYS.map((key, idx) => {
+                const baseVal = baselineData[key];
+                const currVal = currentData[key];
+                const delta = formatDelta(currVal, baseVal, key);
+                const zebra =
+                  idx % 2 === 0 ? "background:#fafafa;" : "background:#ffffff;";
+                return `
+                  <tr style="${zebra}">
+                    <td style="padding:8px 10px; border-bottom:1px solid #eee;">
+                      <div style="font-weight:600;">${VAR_LABELS[key] || key}</div>
+                      <div style="font-size:12px; color:#666; margin-top:2px;">${key}</div>
+                    </td>
+                    <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right;">
+                      ${formatValue(baseVal, key)}
+                    </td>
+                    <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right;">
+                      ${formatValue(currVal, key)}
+                    </td>
+                    <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right;">
+                      ${delta}
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
             </tbody>
           </table>
         </div>
       </div>
     `;
 
+    const canvas = el("singleComparisonCanvas");
+    if (canvas) {
+      singleComparisonChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: GRAPH_KEYS.map((key) => VAR_LABELS[key] || key),
+          datasets: [
+            {
+              label: "% Change from Baseline",
+              data: GRAPH_KEYS.map((key) =>
+                percentChange(currentData[key], baselineData[key]),
+              ),
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+            },
+            title: {
+              display: true,
+              text: `${currentLabel} vs Baseline (% Change)`,
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const value = context.raw;
+                  if (value === null || value === undefined) return "N/A";
+                  return `${value.toFixed(2)}%`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45,
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Percent Change (%)",
+              },
+              ticks: {
+                callback: function (value) {
+                  return value + "%";
+                },
+              },
+            },
+          },
+        },
+      });
+    }
     container.style.display = "block";
   }
 
   function renderAllDrugComparison(results) {
     const container = el("allDrugResults");
     if (!container || !baselineData) return;
+
+    destroyCharts();
 
     const rows = results
       .map((item, idx) => {
@@ -440,7 +505,11 @@ const Conditions = (() => {
       <div class="card" style="padding:16px;">
         <h2 style="margin:0 0 12px 0;">All Drug Comparison Summary</h2>
         <div style="color:#666; font-size:13px; margin-bottom:12px;">
-          Each row shows the model response after applying drug-specific changes to R_s and R_p relative to the current baseline inputs.
+          Graph + table view for all preset drugs relative to baseline.
+        </div>
+
+        <div style="height:420px; margin-bottom:18px;">
+          <canvas id="allDrugComparisonCanvas"></canvas>
         </div>
 
         <div style="overflow-x:auto;">
@@ -466,6 +535,52 @@ const Conditions = (() => {
         </div>
       </div>
     `;
+
+    const canvas = el("allDrugComparisonCanvas");
+    if (canvas) {
+      allDrugComparisonChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: results.map((item) => item.label),
+          datasets: [
+            {
+              label: "Baseline Qp/Qs",
+              data: results.map(() => Number(baselineData.Qp_Qs)),
+            },
+            {
+              label: "Drug Qp/Qs",
+              data: results.map((item) => Number(item.data.Qp_Qs)),
+            },
+            {
+              label: "Baseline Qs",
+              data: results.map(() => Number(baselineData.Q_s)),
+            },
+            {
+              label: "Drug Qs",
+              data: results.map((item) => Number(item.data.Q_s)),
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+            },
+            title: {
+              display: true,
+              text: "All Drug Effects Compared With Baseline",
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    }
 
     container.style.display = "block";
   }
@@ -508,6 +623,13 @@ const Conditions = (() => {
 
       const result = await calculate(modifiedInputs);
       renderComparison(result, drugEffects[condition].label);
+
+      const allDrugContainer = el("allDrugResults");
+      if (allDrugContainer) {
+        allDrugContainer.innerHTML = "";
+        allDrugContainer.style.display = "none";
+      }
+
       toggleResults(true);
     } catch (error) {
       console.error(error);
@@ -557,6 +679,12 @@ const Conditions = (() => {
       btn.classList.remove("selected");
     });
 
+    const allDrugContainer = el("allDrugResults");
+    if (allDrugContainer) {
+      allDrugContainer.innerHTML = "";
+      allDrugContainer.style.display = "none";
+    }
+
     if (baselineData) {
       renderComparison(baselineData, "Baseline");
       toggleResults(true);
@@ -569,12 +697,20 @@ const Conditions = (() => {
     try {
       const payload = payloadFromInputs();
       const result = await calculate(payload);
+
       renderComparison(
         result,
         selectedDrug
           ? `${drugEffects[selectedDrug].label} (Edited)`
           : "Custom Inputs",
       );
+
+      const allDrugContainer = el("allDrugResults");
+      if (allDrugContainer) {
+        allDrugContainer.innerHTML = "";
+        allDrugContainer.style.display = "none";
+      }
+
       toggleResults(true);
     } catch (error) {
       console.error(error);
@@ -604,11 +740,6 @@ const Conditions = (() => {
   }
 
   function init() {
-    console.log("HR element:", document.getElementById("HR"));
-    console.log(
-      "All form HTML:",
-      document.getElementById("parameterForm")?.outerHTML,
-    );
     setupModalHandlers();
     setupImageMapModal();
     bindButtons();

@@ -169,66 +169,123 @@ def flow_pressure_solver_2(C_dia, C_A, C_V, HR, R_p, R_s, V_total, EF):
     return Q_s, Q_p, P_a, P_v
 
 
-def saturation_solver(Q_s, Q_p, Hb, CVO2, S_pv=0.99):
+# def saturation_solver(Q_s, Q_p, Hb, CVO2, S_pv=0.99):
+#     """
+#     Solve for mixed and systemic venous oxygen saturations 
+#     given systemic and pulmonary flows.
+
+#     Parameters
+#     ----------
+#     Q_s : float
+#         Systemic flow (Q_s), blood flow through the systemic circuit. Must be > 0.
+#     Q_p : float
+#         Pulmonary flow (Q_p), blood flow through the pulmonary circuit. Must be > 0.
+#     Hb : float
+#         Hemoglobin concentration (Hb), affecting oxygen carrying capacity. Must be > 0.
+#     CVO2 : float
+#         Total oxygen consumption (CVO2). Must be > 0.
+#     S_pv : float, optional
+#         Pulmonary venous saturation (S_pv), oxygen saturation in blood 
+#         returning from the lungs. Default is 0.99 (99%). Must be > 0.
+
+#     Returns
+#     -------
+#     S_m : float
+#         Mixed oxygen saturation (S_m), representing 
+#         saturation after mixing of systemic venous and pulmonary 
+#         venous blood. Muliply the value by 100 to get it in percent form.
+#     S_sv : float
+#         Systemic venous saturation (S_sv), oxygen saturation 
+#         in blood returning from the systemic circuit. Muliply the value by 
+#         100 to get it in percent form.
+#     D20 : float
+#         Oxygen delivery, represetning the amount of O2 delivered to systemic tissue per minute
+#     OER: float
+#         Oxygen Extraction Ratio. 
+#     """
+    
+
+#     #Throws a flag if inputs are not positive
+#     for name, value in {
+#         "Q_s": Q_s,
+#         "Q_p": Q_p,
+#         "Hb": Hb,
+#         "CVO2": CVO2,
+#         "S_pv": S_pv,
+#     }.items():
+#         if value <= 0:
+#             raise ValueError(f"{name} must be positive (got {value}).")
+
+
+#     A = np.array([[(Q_s+Q_p), -Q_s],
+#          [1.34*Hb*Q_s, -1.34*Hb*Q_s]], dtype=float)
+#     b = np.array([[Q_p*S_pv],
+#          [CVO2]], dtype=float)
+
+#     x = np.linalg.solve(A, b)
+#     S_m = x[0][0]
+#     S_sv = x[1][0]
+
+#     #print(f"S_m = {S_m}")
+#     #print(f"S_sv = {S_sv}")
+
+#     D20 = 1.34 * Hb * S_m * Q_s
+#     return S_m, S_sv, D20
+
+def saturation_solver(Q_s, Q_p, Hb, VO2, S_pv=0.99):
     """
-    Solve for mixed and systemic venous oxygen saturations 
+    Solve for mixed and systemic venous oxygen saturations
     given systemic and pulmonary flows.
 
     Parameters
     ----------
     Q_s : float
-        Systemic flow (Q_s), blood flow through the systemic circuit. Must be > 0.
+        Systemic flow (L/min). Must be > 0.
     Q_p : float
-        Pulmonary flow (Q_p), blood flow through the pulmonary circuit. Must be > 0.
+        Pulmonary flow (L/min). Must be > 0.
     Hb : float
-        Hemoglobin concentration (Hb), affecting oxygen carrying capacity. Must be > 0.
-    CVO2 : float
-        Total oxygen consumption (CVO2). Must be > 0.
+        Hemoglobin concentration (g/dL). Must be > 0.
+    VO2 : float
+        Absolute oxygen consumption (mL/min). Must be > 0.
     S_pv : float, optional
-        Pulmonary venous saturation (S_pv), oxygen saturation in blood 
-        returning from the lungs. Default is 0.99 (99%). Must be > 0.
+        Pulmonary venous saturation as a fraction. Default is 0.99.
 
     Returns
     -------
     S_m : float
-        Mixed oxygen saturation (S_m), representing 
-        saturation after mixing of systemic venous and pulmonary 
-        venous blood. Muliply the value by 100 to get it in percent form.
+        Mixed saturation (fraction from 0 to 1).
     S_sv : float
-        Systemic venous saturation (S_sv), oxygen saturation 
-        in blood returning from the systemic circuit. Muliply the value by 
-        100 to get it in percent form.
-    D20 : float
-        Oxygen delivery, represetning the amount of O2 delivered to systemic tissue per minute
-    OER: float
-        Oxygen Extraction Ratio. 
+        Systemic venous saturation (fraction from 0 to 1).
+    DO2 : float
+        Oxygen delivery (mL O2/min).
     """
-    
+    import numpy as np
 
-    #Throws a flag if inputs are not positive
     for name, value in {
         "Q_s": Q_s,
         "Q_p": Q_p,
         "Hb": Hb,
-        "CVO2": CVO2,
+        "VO2": VO2,
         "S_pv": S_pv,
     }.items():
         if value <= 0:
             raise ValueError(f"{name} must be positive (got {value}).")
 
+    oxygen_capacity = 1.34 * Hb * 10.0  # mL O2 / L blood
 
-    A = np.array([[(Q_s+Q_p), -Q_s],
-         [1.34*Hb*Q_s, -1.34*Hb*Q_s]], dtype=float)
-    b = np.array([[Q_p*S_pv],
-         [CVO2]], dtype=float)
+    A = np.array([
+        [Q_s + Q_p, -Q_s],
+        [oxygen_capacity * Q_s, -oxygen_capacity * Q_s]
+    ], dtype=float)
+
+    b = np.array([
+        [Q_p * S_pv],
+        [VO2]
+    ], dtype=float)
 
     x = np.linalg.solve(A, b)
-    S_m = x[0][0]
-    S_sv = x[1][0]
+    S_m = float(x[0][0])
+    S_sv = float(x[1][0])
+    DO2 = oxygen_capacity * S_m * Q_s
 
-    #print(f"S_m = {S_m}")
-    #print(f"S_sv = {S_sv}")
-
-    D20 = 1.34 * Hb * S_m * Q_s
-    return S_m, S_sv, D20
-
+    return S_m, S_sv, DO2
