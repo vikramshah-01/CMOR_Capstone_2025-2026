@@ -1,7 +1,7 @@
 // =============================================
-// Clinical Drug Comparison Page
-// Graphs for single-drug comparison
-// Table + graph for compare-all
+// Shared script.js for:
+// 1) Slider page  -> uses /process, has C_sys, no EF
+// 2) Conditions page -> uses /calculate_condition_values, has EF, no C_sys
 // =============================================
 
 const Conditions = (() => {
@@ -71,14 +71,41 @@ const Conditions = (() => {
     return document.getElementById(id);
   }
 
+  function hasElement(id) {
+    return !!document.getElementById(id);
+  }
+
+  function hasEF() {
+    return hasElement("EF");
+  }
+
+  function hasCSys() {
+    return hasElement("C_sys");
+  }
+
+  function isConditionsPage() {
+    return hasEF();
+  }
+
+  function isSliderPage() {
+    return hasCSys() && !hasEF();
+  }
+
+  function getCalculateEndpoint() {
+    return isConditionsPage() ? "/calculate_condition_values" : "/process";
+  }
+
   function setField(id, value) {
     const node = el(id);
-    if (node) node.value = value;
+    if (node && value !== undefined && value !== null) {
+      node.value = value;
+    }
   }
 
   function getNumber(id) {
     const node = el(id);
     if (!node) return null;
+
     const value = Number(node.value);
     return Number.isFinite(value) ? value : null;
   }
@@ -86,7 +113,6 @@ const Conditions = (() => {
   function payloadFromInputs() {
     const payload = {
       HR: getNumber("HR"),
-      EF: getNumber("EF"),
       C_dia: getNumber("C_dia"),
       C_A: getNumber("C_A"),
       C_V: getNumber("C_V"),
@@ -97,6 +123,16 @@ const Conditions = (() => {
       CVO2: getNumber("CVO2"),
     };
 
+    // Conditions page only
+    if (hasEF()) {
+      payload.EF = getNumber("EF");
+    }
+
+    // Slider page only
+    if (hasCSys()) {
+      payload.C_sys = getNumber("C_sys");
+    }
+
     for (const key in payload) {
       if (payload[key] === null) {
         throw new Error(`Invalid value for ${key}`);
@@ -104,6 +140,27 @@ const Conditions = (() => {
     }
 
     return payload;
+  }
+
+  function applyInputs(inputPayload) {
+    setField("HR", inputPayload.HR);
+
+    if (hasEF()) {
+      setField("EF", inputPayload.EF);
+    }
+
+    if (hasCSys()) {
+      setField("C_sys", inputPayload.C_sys);
+    }
+
+    setField("C_dia", inputPayload.C_dia);
+    setField("C_A", inputPayload.C_A);
+    setField("C_V", inputPayload.C_V);
+    setField("R_s", inputPayload.R_s);
+    setField("R_p", inputPayload.R_p);
+    setField("V_total", inputPayload.V_total);
+    setField("Hb", inputPayload.Hb);
+    setField("CVO2", inputPayload.CVO2);
   }
 
   function formatValue(v, key = "") {
@@ -211,9 +268,8 @@ const Conditions = (() => {
   function setupImageMapModal() {
     const modal = el("popup-modal");
     const modalText = el("diagram-text");
-    const image = el("clickable-image");
 
-    if (!modal || !modalText || !image) return;
+    if (!modal || !modalText) return;
 
     document.querySelectorAll("area").forEach((area) => {
       area.addEventListener("click", (e) => {
@@ -223,7 +279,9 @@ const Conditions = (() => {
       });
     });
 
-    if (typeof imageMapResize === "function") imageMapResize();
+    if (typeof imageMapResize === "function") {
+      imageMapResize();
+    }
   }
 
   function updateBaselineStatus() {
@@ -273,19 +331,19 @@ const Conditions = (() => {
     }
   }
 
-  function applyDrugToInputs(baseInputs, condition) {
-    const drug = drugEffects[condition];
-    if (!drug) throw new Error(`Unknown drug condition: ${condition}`);
-
-    return {
-      ...baseInputs,
-      R_s: Number((baseInputs.R_s * (1 + drug.RS_pct)).toFixed(6)),
-      R_p: Number((baseInputs.R_p * (1 + drug.RP_pct)).toFixed(6)),
-    };
+  function destroyCharts() {
+    if (singleComparisonChart) {
+      singleComparisonChart.destroy();
+      singleComparisonChart = null;
+    }
+    if (allDrugComparisonChart) {
+      allDrugComparisonChart.destroy();
+      allDrugComparisonChart = null;
+    }
   }
 
   async function calculate(payload) {
-    const response = await fetch("/calculate_condition_values", {
+    const response = await fetch(getCalculateEndpoint(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -319,20 +377,61 @@ const Conditions = (() => {
     return data;
   }
 
-  function destroyCharts() {
-    if (singleComparisonChart) {
-      singleComparisonChart.destroy();
-      singleComparisonChart = null;
+  function renderSliderResults(result) {
+    const resultNode = el("result");
+    const sliderResults = el("sliderResults");
+
+    if (!sliderResults) return;
+
+    destroyCharts();
+
+    if (resultNode) {
+      resultNode.textContent = "";
     }
-    if (allDrugComparisonChart) {
-      allDrugComparisonChart.destroy();
-      allDrugComparisonChart = null;
-    }
+
+    sliderResults.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <h2 style="margin-top:0;">Results</h2>
+        <table style="width:100%; border-collapse:collapse;">
+          <tbody>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Systemic Flow (Q_s)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.Q_s, "Q_s")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Pulmonary Flow (Q_p)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.Q_p, "Q_p")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Arterial Pressure (P_a)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.P_a, "P_a")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Venous Pressure (P_v)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.P_v, "P_v")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Mixed Saturation (S_m)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.S_m, "S_m")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #eee; font-weight:600;">Systemic Venous Saturation (S_sv)</td>
+              <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${formatValue(result.S_sv, "S_sv")}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; font-weight:600;">Oxygen Delivery (OD2)</td>
+              <td style="padding:8px; text-align:right;">${formatValue(result.OD2, "OD2")}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
   }
 
   function renderComparison(currentData, currentLabel = "Custom Inputs") {
     const container = el("conditionResults");
     if (!container || !baselineData) return;
+    if (typeof Chart === "undefined") return;
 
     destroyCharts();
 
@@ -450,12 +549,14 @@ const Conditions = (() => {
         },
       });
     }
+
     container.style.display = "block";
   }
 
   function renderAllDrugComparison(results) {
     const container = el("allDrugResults");
     if (!container || !baselineData) return;
+    if (typeof Chart === "undefined") return;
 
     destroyCharts();
 
@@ -585,25 +686,23 @@ const Conditions = (() => {
     container.style.display = "block";
   }
 
+  function applyDrugToInputs(baseInputs, condition) {
+    const drug = drugEffects[condition];
+    if (!drug) throw new Error(`Unknown drug condition: ${condition}`);
+
+    return {
+      ...baseInputs,
+      R_s: Number((baseInputs.R_s * (1 + drug.RS_pct)).toFixed(6)),
+      R_p: Number((baseInputs.R_p * (1 + drug.RP_pct)).toFixed(6)),
+    };
+  }
+
   async function initializeBaseline() {
     baselineInputs = payloadFromInputs();
     baselineData = await calculate(baselineInputs);
     updateBaselineStatus();
     updateSelectedDrugStatus();
     renderComparison(baselineData, "Baseline");
-  }
-
-  function applyInputs(inputPayload) {
-    setField("HR", inputPayload.HR);
-    setField("EF", inputPayload.EF);
-    setField("C_dia", inputPayload.C_dia);
-    setField("C_A", inputPayload.C_A);
-    setField("C_V", inputPayload.C_V);
-    setField("R_s", inputPayload.R_s);
-    setField("R_p", inputPayload.R_p);
-    setField("V_total", inputPayload.V_total);
-    setField("Hb", inputPayload.Hb);
-    setField("CVO2", inputPayload.CVO2);
   }
 
   async function applyCondition(condition) {
@@ -691,33 +790,6 @@ const Conditions = (() => {
     }
   }
 
-  async function onSubmit(event) {
-    event.preventDefault();
-
-    try {
-      const payload = payloadFromInputs();
-      const result = await calculate(payload);
-
-      renderComparison(
-        result,
-        selectedDrug
-          ? `${drugEffects[selectedDrug].label} (Edited)`
-          : "Custom Inputs",
-      );
-
-      const allDrugContainer = el("allDrugResults");
-      if (allDrugContainer) {
-        allDrugContainer.innerHTML = "";
-        allDrugContainer.style.display = "none";
-      }
-
-      toggleResults(true);
-    } catch (error) {
-      console.error(error);
-      alert(error.message || "Submit failed.");
-    }
-  }
-
   function bindButtons() {
     document
       .querySelectorAll(".preset-btn[data-condition]")
@@ -739,23 +811,57 @@ const Conditions = (() => {
     }
   }
 
+  async function onSubmit(event) {
+    event.preventDefault();
+
+    try {
+      const payload = payloadFromInputs();
+      const result = await calculate(payload);
+
+      if (isConditionsPage()) {
+        renderComparison(
+          result,
+          selectedDrug
+            ? `${drugEffects[selectedDrug].label} (Edited)`
+            : "Custom Inputs",
+        );
+
+        const allDrugContainer = el("allDrugResults");
+        if (allDrugContainer) {
+          allDrugContainer.innerHTML = "";
+          allDrugContainer.style.display = "none";
+        }
+
+        toggleResults(true);
+      } else {
+        renderSliderResults(result);
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Submit failed.");
+    }
+  }
+
   function init() {
     setupModalHandlers();
     setupImageMapModal();
-    bindButtons();
 
     const form = el("parameterForm");
-    const hrInput = el("HR");
-
     if (form) {
       form.addEventListener("submit", onSubmit);
     }
 
-    if (form && hrInput) {
+    if (isConditionsPage()) {
+      bindButtons();
+
       initializeBaseline().catch((error) => {
         console.error(error);
         alert(`Failed to initialize baseline: ${error.message}`);
       });
+    } else if (isSliderPage()) {
+      console.log("Slider page detected.");
+    } else {
+      console.log("Unknown page type detected.");
     }
   }
 
@@ -767,6 +873,12 @@ const Conditions = (() => {
 })();
 
 document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("parameterForm");
+  if (!form) {
+    console.log("No parameter form found; skipping init.");
+    return;
+  }
+
   window.Conditions = Conditions;
   Conditions.init();
 });
