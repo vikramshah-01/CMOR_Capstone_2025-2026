@@ -8,265 +8,481 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='styles.css') }}"
     />
+
+    <style>
+      .conditions-layout {
+        background: #f6f7fb;
+        margin: 0;
+        padding: 0;
+      }
+
+      .conditions-page {
+        max-width: 1450px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .page-title {
+        margin-bottom: 12px;
+      }
+
+      .page-intro {
+        max-width: 1100px;
+        line-height: 1.6;
+        margin-bottom: 24px;
+      }
+
+      .top-section {
+        display: grid;
+        grid-template-columns: 1fr 1.1fr;
+        gap: 24px;
+        align-items: start;
+      }
+
+      .panel-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+      }
+
+      .diagram-panel img {
+        width: 100%;
+        max-height: 72vh;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .controls-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .button-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .preset-btn {
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+
+      .preset-btn.selected {
+        outline: 2px solid #333;
+      }
+
+      .parameter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 20px;
+      }
+
+      .field-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .field-group label {
+        font-weight: 600;
+        margin-bottom: 6px;
+        line-height: 1.35;
+      }
+
+      .field-group input {
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        font-size: 0.95rem;
+      }
+
+      .action-buttons {
+        margin-top: 20px;
+        text-align: center;
+      }
+
+      .action-buttons button,
+      .results-toolbar button,
+      .back-home-wrap button {
+        padding: 12px 18px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+
+      .status-line {
+        margin-top: 12px;
+        font-size: 0.95rem;
+        color: #444;
+      }
+
+      .results-section {
+        margin-top: 28px;
+        scroll-margin-top: 24px;
+      }
+
+      .results-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
+      .results-description {
+        color: #666;
+        margin-bottom: 10px;
+      }
+
+      #conditionResults,
+      #allDrugResults {
+        width: 100%;
+      }
+
+      .back-home-wrap {
+        text-align: center;
+        margin-top: 30px;
+      }
+
+      .modal {
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+      }
+
+      .modal-content {
+        background: white;
+        width: min(600px, 90vw);
+        margin: 10vh auto;
+        padding: 24px;
+        border-radius: 14px;
+        position: relative;
+      }
+
+      .close {
+        position: absolute;
+        right: 16px;
+        top: 12px;
+        font-size: 26px;
+        cursor: pointer;
+      }
+
+      @media (max-width: 1100px) {
+        .top-section {
+          grid-template-columns: 1fr;
+        }
+
+        .diagram-panel img {
+          max-height: 55vh;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .conditions-page {
+          padding: 16px;
+        }
+
+        .parameter-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .results-toolbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
   </head>
 
-  <body class="three-column-layout">
-    <h1>Clinical Drug Comparison</h1>
+  <body class="conditions-layout">
+    <div class="conditions-page">
+      <h1 class="page-title">Clinical Drug Comparison</h1>
 
-    <p>
-      This page allows you to compare vasoactive and pulmonary vasodilator drug
-      effects using the steady-state Norwood circulation notation from the
-      report. Each drug modifies systemic resistance R<sub>s</sub> and pulmonary
-      resistance R<sub>p</sub> according to the comparison chart. After
-      selecting a drug or adjusting parameters manually, click Submit to compare
-      the resulting flows, pressures, saturations, and oxygen delivery against
-      the baseline state.
-    </p>
+      <p class="page-intro">
+        This page allows you to compare vasoactive and pulmonary vasodilator
+        drug effects using the steady-state Norwood circulation notation from
+        the report. Each drug modifies systemic resistance R<sub>s</sub> and
+        pulmonary resistance R<sub>p</sub> according to the comparison chart.
+        After selecting a drug or adjusting parameters manually, click Submit to
+        compare the resulting flows, pressures, saturations, and oxygen delivery
+        against the baseline state.
+      </p>
 
-    <div class="button-container">
-      <button class="preset-btn" type="button" data-condition="nicardipine">
-        Nicardipine
-      </button>
-      <button class="preset-btn" type="button" data-condition="milrinone">
-        Milrinone
-      </button>
-      <button class="preset-btn" type="button" data-condition="sildenafil">
-        Sildenafil
-      </button>
-      <button class="preset-btn" type="button" data-condition="ino">iNO</button>
-      <button class="preset-btn" type="button" data-condition="epoprostenol">
-        Epoprostenol
-      </button>
-      <button class="preset-btn" type="button" id="compareAllBtn">
-        Compare All Drugs
-      </button>
-      <button class="preset-btn" type="button" id="resetBaselineBtn">
-        Reset to Baseline
-      </button>
-    </div>
+      <div class="top-section">
+        <div class="diagram-panel panel-card">
+          <h2>Diagram</h2>
 
-    <div class="flex-container">
-      <div class="left-column">
-          <img src="/static/Image.png" usemap="#image-map" alt="Patient Vitals Diagram" class="interactive-image" id="clickable-image">
-          <!-- Image Map Generated by http://www.image-map.net/ -->
-          <!-- <img src="Image.png" usemap="#image-map"> -->
+          <img
+            src="/static/new_fontan_diagram.png"
+            usemap="#image-map"
+            alt="Norwood circulation diagram"
+            class="interactive-image"
+            id="clickable-image"
+          />
 
           <map name="image-map">
-              <area target="" alt="Common Atrium" title="Common Atrium" href="" coords="1716,3373,286" shape="circle"
-              data-content="Common Atrium: Mixing chamber where oxygenated and deoxygenated blood combine before entering the right ventricle.">
-              <area target="" alt="Right Ventricle" title="Right Ventricle" href="" coords="1716,1799,280" shape="circle"
-              data-content="Right Ventricle: Pumps blood from the heart into the arterial system.">
-              <area target="" alt="Systemic Circulation" title="Systemic Circulation" href="" coords="238,1598,655,2000" shape="rect"
-              data-content="Systemic Circulation: Delivers oxygen to the body and returns deoxygenated blood.">
-              <area target="" alt="Pulmonary Circulation" title="Pulmonary Circulation" href="" coords="2786,1595,3207,1997" shape="rect"
-              data-content="Pulmonary Circulation: Sends blood to the lungs for oxygenation and returns oxygen-rich blood.">
-              <area target="" alt="Arterial Pressure" title="Arterial Pressure" href="" coords="1719,305,220" shape="circle"
-              data-content="Arterial Pressure: Pressure driving blood flow through systemic and pulmonary circuits.">
-              <area target="" alt="Systemic Flow" title="Systemic Flow" href="" coords="451,62,1497,458" shape="rect"
-              data-content="Systemic Flow: Blood flow from the heart to the body tissues.">
-              <area target="" alt="Pulmonary Flow" title="Pulmonary Flow" href="" coords="1954,63,2975,477" shape="rect"
-              data-content="Pulmonary Flow: Blood flow from the heart to the lungs.">
-              <area target="" alt="Right Ventricle Flow" title="Right Ventricle Flow" href="" coords="2082,1503,1402,586" shape="rect"
-              data-content="Right Ventricle Flow: Output flow generated by the right ventricle.">
-              <area target="" alt="Mixed Saturation" title="Mixed Saturation" href="" coords="1265,2115,2247,3073" shape="rect"
-              data-content="Mixed Saturation: Oxygen level of blood after mixing in the atrium.">
-              <area target="" alt="Oxygen Saturation in Systemic Vein" title="Oxygen Saturation in Systemic Vein" href="" coords="79,2053,1235,3519" shape="rect"
-              data-content="Oxygen Saturation in Systemic Vein: Oxygen level of blood returning from the body (low).">
-              <area target="" alt="Oxygen Saturation in Pulmonary Vein" title="Oxygen Saturation in Pulmonary Vein" href="" coords="2259,3469,3387,2018" shape="rect"
-              data-content="Oxygen Saturation in Pulmonary Vein: Oxygen level of blood returning from the lungs (high).">
-              <area target="" alt="Oxygen Saturation in Systemic Artery" title="Oxygen Saturation in Systemic Artery" href="" coords="55,484,841,1582" shape="rect"
-              data-content="Oxygen Saturation in Systemic Artery: Oxygen level of blood delivered to the body.">
-              <area target="" alt="Oxygen Saturation in Pulmonary Artery" title="Oxygen Saturation in Pulmonary Artery" href="" coords="2677,496,3384,1579" shape="rect"
-              data-content="Oxygen Saturation in Pulmonary Artery: Oxygen level of blood going to the lungs.">
+            <!-- Keep your existing area tags here if you are using them -->
           </map>
-      </div>
+        </div>
 
-      <div class="middle-column">
-        <div class="card">
-          <h2>Adjust Parameters</h2>
+        <div class="controls-stack">
+          <div class="panel-card">
+            <h2>Drug Presets</h2>
 
-          <form id="parameterForm">
-            <label for="HR">Heart Rate, HR (beats/min):</label>
-            <input
-              type="number"
-              id="HR"
-              name="HR"
-              min="50"
-              max="180"
-              step="1"
-              value="100"
-              required
-            />
-            <br /><br />
-
-            <label for="EF">Ejection Fraction, EF (fraction):</label>
-            <input
-              type="number"
-              id="EF"
-              name="EF"
-              min="0.10"
-              max="1.00"
-              step="0.01"
-              value="0.55"
-              required
-            />
-            <br /><br />
-
-            <label for="C_dia"
-              >Diastolic Compliance, C<sub>dia</sub> (mL/mmHg):</label
-            >
-            <input
-              type="number"
-              id="C_dia"
-              name="C_dia"
-              min="0.001"
-              max="1"
-              step="0.001"
-              value="0.02"
-              required
-            />
-            <br /><br />
-
-            <label for="C_A"
-              >Arterial Compliance, C<sub>A</sub> (mL/mmHg):</label
-            >
-            <input
-              type="number"
-              id="C_A"
-              name="C_A"
-              min="0.0001"
-              max="1"
-              step="0.0001"
-              value="0.0074"
-              required
-            />
-            <br /><br />
-
-            <label for="C_V">Venous Compliance, C<sub>V</sub> (mL/mmHg):</label>
-            <input
-              type="number"
-              id="C_V"
-              name="C_V"
-              min="0.001"
-              max="5"
-              step="0.0001"
-              value="0.2222"
-              required
-            />
-            <br /><br />
-
-            <label for="R_s"
-              >Systemic Resistance, R<sub>s</sub> (Wood Units):</label
-            >
-            <input
-              type="number"
-              id="R_s"
-              name="R_s"
-              min="0.1"
-              max="200"
-              step="0.1"
-              value="80"
-              required
-            />
-            <br /><br />
-
-            <label for="R_p"
-              >Pulmonary Resistance, R<sub>p</sub> (Wood Units):</label
-            >
-            <input
-              type="number"
-              id="R_p"
-              name="R_p"
-              min="0.1"
-              max="50"
-              step="0.1"
-              value="10"
-              required
-            />
-            <br /><br />
-
-            <label for="V_total"
-              >Total Blood Volume, V<sub>total</sub> (L):</label
-            >
-            <input
-              type="number"
-              id="V_total"
-              name="V_total"
-              min="0.1"
-              max="20"
-              step="0.1"
-              value="5.0"
-              required
-            />
-            <br /><br />
-
-            <label for="Hb">Hemoglobin, Hb (g/dL):</label>
-            <input
-              type="number"
-              id="Hb"
-              name="Hb"
-              min="1"
-              max="25"
-              step="0.1"
-              value="15.0"
-              required
-            />
-            <br /><br />
-
-            <label for="CVO2">Oxygen Consumption, CVO2 (mL/m²/min):</label>
-            <input
-              type="number"
-              id="CVO2"
-              name="CVO2"
-              min="1"
-              max="500"
-              step="1"
-              value="200"
-              required
-            />
-            <br /><br />
-
-            <div
-              class="action-buttons"
-              style="margin-top: 20px; text-align: center"
-            >
-              <button type="submit" id="conditionSubmitBtn">Submit</button>
+            <div class="button-container">
+              <button
+                class="preset-btn"
+                type="button"
+                data-condition="nicardipine"
+              >
+                Nicardipine
+              </button>
+              <button
+                class="preset-btn"
+                type="button"
+                data-condition="milrinone"
+              >
+                Milrinone
+              </button>
+              <button
+                class="preset-btn"
+                type="button"
+                data-condition="sildenafil"
+              >
+                Sildenafil
+              </button>
+              <button class="preset-btn" type="button" data-condition="ino">
+                iNO
+              </button>
+              <button
+                class="preset-btn"
+                type="button"
+                data-condition="epoprostenol"
+              >
+                Epoprostenol
+              </button>
+              <button class="preset-btn" type="button" id="compareAllBtn">
+                Compare All Drugs
+              </button>
+              <button class="preset-btn" type="button" id="resetBaselineBtn">
+                Reset to Baseline
+              </button>
             </div>
-          </form>
+          </div>
 
-          <p
-            id="baselineStatus"
-            style="margin-top: 12px; font-size: 0.95em"
-          ></p>
-          <p
-            id="selectedDrugStatus"
-            style="margin-top: 8px; font-size: 0.95em"
-          ></p>
+          <div class="panel-card">
+            <h2>Adjust Parameters</h2>
+
+            <form id="parameterForm">
+              <div class="parameter-grid">
+                <div class="field-group">
+                  <label for="HR">Heart Rate, HR (beats/min):</label>
+                  <input
+                    type="number"
+                    id="HR"
+                    name="HR"
+                    min="50"
+                    max="180"
+                    step="1"
+                    value="100"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="EF">Ejection Fraction, EF (fraction):</label>
+                  <input
+                    type="number"
+                    id="EF"
+                    name="EF"
+                    min="0.10"
+                    max="1.00"
+                    step="0.01"
+                    value="0.55"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="C_dia">
+                    Diastolic Compliance, C<sub>dia</sub> (mL/mmHg):
+                  </label>
+                  <input
+                    type="number"
+                    id="C_dia"
+                    name="C_dia"
+                    min="0.001"
+                    max="1"
+                    step="0.001"
+                    value="0.02"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="C_A">
+                    Arterial Compliance, C<sub>A</sub> (mL/mmHg):
+                  </label>
+                  <input
+                    type="number"
+                    id="C_A"
+                    name="C_A"
+                    min="0.0001"
+                    max="1"
+                    step="0.0001"
+                    value="0.0074"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="C_V">
+                    Venous Compliance, C<sub>V</sub> (mL/mmHg):
+                  </label>
+                  <input
+                    type="number"
+                    id="C_V"
+                    name="C_V"
+                    min="0.001"
+                    max="5"
+                    step="0.0001"
+                    value="0.2222"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="R_s">
+                    Systemic Resistance, R<sub>s</sub> (Wood Units):
+                  </label>
+                  <input
+                    type="number"
+                    id="R_s"
+                    name="R_s"
+                    min="0.1"
+                    max="200"
+                    step="0.1"
+                    value="80"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="R_p">
+                    Pulmonary Resistance, R<sub>p</sub> (Wood Units):
+                  </label>
+                  <input
+                    type="number"
+                    id="R_p"
+                    name="R_p"
+                    min="0.1"
+                    max="50"
+                    step="0.1"
+                    value="10"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="V_total">
+                    Total Blood Volume, V<sub>total</sub> (L):
+                  </label>
+                  <input
+                    type="number"
+                    id="V_total"
+                    name="V_total"
+                    min="0.1"
+                    max="20"
+                    step="0.1"
+                    value="5.0"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="Hb">Hemoglobin, Hb (g/dL):</label>
+                  <input
+                    type="number"
+                    id="Hb"
+                    name="Hb"
+                    min="1"
+                    max="25"
+                    step="0.1"
+                    value="15.0"
+                    required
+                  />
+                </div>
+
+                <div class="field-group">
+                  <label for="CVO2">
+                    Oxygen Consumption, CVO2 (mL/m²/min):
+                  </label>
+                  <input
+                    type="number"
+                    id="CVO2"
+                    name="CVO2"
+                    min="1"
+                    max="500"
+                    step="1"
+                    value="200"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="action-buttons">
+                <button type="submit" id="conditionSubmitBtn">Submit</button>
+              </div>
+            </form>
+
+            <p id="baselineStatus" class="status-line"></p>
+            <p id="selectedDrugStatus" class="status-line"></p>
+          </div>
         </div>
       </div>
 
-      <div class="right-column">
-        <div style="text-align: center; margin-bottom: 15px">
-          <button type="button" onclick="Conditions.toggleResults(true)">
-            Show Results
-          </button>
+      <section id="resultsSection" class="results-section">
+        <div class="panel-card">
+          <div class="results-toolbar">
+            <h2>Generated Results</h2>
 
-          <button
-            type="button"
-            id="hideResultsBtn"
-            onclick="Conditions.toggleResults(false)"
-            style="display: none; margin-left: 10px"
-          >
-            Hide Results
-          </button>
+            <button
+              type="button"
+              id="hideResultsBtn"
+              onclick="Conditions.toggleResults(false)"
+              style="display: none"
+            >
+              Hide Results
+            </button>
+          </div>
+
+          <p class="results-description">
+            Results appear below and the page can scroll naturally, so charts
+            and tables have more room.
+          </p>
+
+          <div
+            id="conditionResults"
+            style="display: none; margin-top: 16px"
+          ></div>
+
+          <div
+            id="allDrugResults"
+            style="display: none; margin-top: 24px"
+          ></div>
         </div>
+      </section>
 
-        <div
-          id="conditionResults"
-          style="display: none; margin-top: 10px"
-        ></div>
-
-        <div id="allDrugResults" style="display: none; margin-top: 20px"></div>
+      <div class="back-home-wrap">
+        <a href="/"><button type="button">Back to Home</button></a>
       </div>
     </div>
 
@@ -282,10 +498,6 @@
         <span id="diagram-close" class="close">&times;</span>
         <p id="diagram-text"></p>
       </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 30px">
-      <a href="/"><button type="button">Back to Home</button></a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

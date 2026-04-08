@@ -142,6 +142,16 @@ const Conditions = (() => {
     return payload;
   }
 
+  function scrollToResults() {
+    const resultsSection = document.getElementById("resultsSection");
+    if (resultsSection) {
+      resultsSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }
+
   function applyInputs(inputPayload) {
     setField("HR", inputPayload.HR);
 
@@ -446,7 +456,7 @@ const Conditions = (() => {
           </div>
         </div>
 
-        <div style="height:420px;">
+        <div style="height:520px;">
           <canvas id="singleComparisonCanvas"></canvas>
         </div>
 
@@ -551,6 +561,7 @@ const Conditions = (() => {
     }
 
     container.style.display = "block";
+    scrollToResults();
   }
 
   function renderAllDrugComparison(results) {
@@ -609,7 +620,7 @@ const Conditions = (() => {
           Graph + table view for all preset drugs relative to baseline.
         </div>
 
-        <div style="height:420px; margin-bottom:18px;">
+        <div style="height:520px; margin-bottom:18px;">
           <canvas id="allDrugComparisonCanvas"></canvas>
         </div>
 
@@ -684,6 +695,7 @@ const Conditions = (() => {
     }
 
     container.style.display = "block";
+    scrollToResults();
   }
 
   function applyDrugToInputs(baseInputs, condition) {
