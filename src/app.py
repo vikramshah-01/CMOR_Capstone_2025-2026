@@ -1,6 +1,4 @@
 from flask import Flask, render_template, request, jsonify
-from hlhs_model import fun_flows, fun_sat, update_compliance, C_d, C_s, C_sa, C_pv, C_pa
-import scipy.optimize
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -296,16 +294,6 @@ def generate_custom_plot():
     plt.close()
 
     return jsonify({"plot": plot_base64})
-
-
-updated_compliance_values = {
-    "C_d": C_d,
-    "C_s": C_s,
-    "C_sa": C_sa,
-    "C_pv": C_pv,
-    "C_pa": C_pa,
-}
-
 
 # --------------------------------------------------
 # Time dependent page
