@@ -11,7 +11,7 @@ from Norwood_Circulation_Solver_Functions import (
 from arterial_and_venous_compliance_solver import arterial_and_venous_compliance_solver
 from systolic_and_diastolic_compliance_solver import systolic_and_diastolic_compliance_solver
 from norwood_plots import yaxis_class1, yaxis_class2
-from time_dependent_model import time_dependent_norwood, Q_Ao
+from time_dependent_model import time_dependent_norwood, time_dependent_norwood_valve, Q_Ao_2
 
 import os
 import io
@@ -307,11 +307,11 @@ def generate_timedep_plot():
             return float(default)
         return float(raw)
 
-    R_s = qfloat("R_s", 17.5)
-    R_p = qfloat("R_p", 1.79)
-    R_BTS = qfloat("R_BTS", 5.0)
-    C_s = qfloat("C_s", 0.01)
-    C_p = qfloat("C_p", 0.08)
+    R_s = qfloat("R_s", 62)
+    R_p = qfloat("R_p", 6)
+    R_BTS = qfloat("R_BTS", 48)
+    C_s = qfloat("C_s", 0.0004)
+    C_p = qfloat("C_p", 0.0007)
     P_sa_0 = qfloat("P_sa_0", 20.0)
     P_pa_0 = qfloat("P_pa_0", 20.0)
     t_end = qfloat("t_end", 0.1)
@@ -324,34 +324,56 @@ def generate_timedep_plot():
 
     plot_type = request.args.get("plot_type", "flows")
 
-    (t, Q_sa, Q_sv, Q_pa, Q_pv, P_sa, P_sv, P_pa, P_pv) = time_dependent_norwood(
-        R_s, R_p, R_BTS, C_s, C_p, P_sa_0, P_pa_0, Q_Ao, t_end, dt
+    (t1, Q_sa1, Q_sv1, Q_pa1, Q_pv1, P_sa1, P_sv1, P_pa1, P_pv1) = time_dependent_norwood(
+        R_s, R_p, R_BTS,
+        C_s, C_p,
+        P_sa_0, P_pa_0,
+        Q_Ao_2,          
+        t_end, dt
     )
 
-    Q_AO = np.array([Q_Ao(ti) for ti in t])
+    (t2, Q_sa2, Q_sv2, Q_pa2, Q_pv2, P_sa2, P_sv2, P_pa2, P_pv2) = time_dependent_norwood_valve(
+        R_s, R_p, R_BTS,
+        C_s, C_p,
+        P_sa_0, P_pa_0,
+        Q_Ao_2,          
+        t_end, dt
+    )
+
+
+    Q_AO = np.array([Q_Ao_2(ti) for ti in t1])
     fig = plt.figure(figsize=(9, 6))
 
     if plot_type == "flows":
-        plt.plot(t, Q_sa, label="Q_SA")
-        plt.plot(t, Q_sv, label="Q_SV")
-        plt.plot(t, Q_pa, label="Q_PA")
-        plt.plot(t, Q_pv, label="Q_PV")
-        plt.plot(t, Q_AO, "--", label="Q_AO")
+        plt.plot(t2, Q_sa2, label="Q_SA")
+        plt.plot(t2, Q_sv2, label="Q_SV")
+        plt.plot(t2, Q_pa2, label="Q_PA")
+        plt.plot(t2, Q_pv2, label="Q_PV")
+        plt.plot(t2, Q_AO, "--", label="Q_AO (input)")
+        plt.title("Time Dependent Plot: Flows")
+        plt.xlabel("Time [min]")
         plt.ylabel("Flow [L/min]")
-        plt.title("Flows")
+        plt.grid(True)
+        plt.legend()
 
     elif plot_type == "pressures":
-        plt.plot(t, P_sa, label="P_SA")
-        plt.plot(t, P_sv, label="P_SV")
-        plt.plot(t, P_pa, label="P_PA")
-        plt.plot(t, P_pv, label="P_PV")
+        plt.plot(t2, P_sa2, label="P_SA")
+        plt.plot(t2, P_sv2, label="P_SV")
+        plt.plot(t2, P_pa2, label="P_PA")
+        plt.plot(t2, P_pv2, '--', label="P_PV")
+        plt.title("Time Dependent Plot: Pressures")
+        plt.xlabel("Time [min]")
         plt.ylabel("Pressure [mmHg]")
-        plt.title("Pressures")
+        plt.grid(True)
+        plt.legend()
 
     elif plot_type == "aortic":
-        plt.plot(t, Q_AO, label="Q_AO")
+        plt.plot(t2, Q_AO, "-", label="Q_AO (input)")
+        plt.title("Time Dependent Plot: Aortic Flow")
+        plt.xlabel("Time [min]")
         plt.ylabel("Flow [L/min]")
-        plt.title("Aortic Flow")
+        plt.grid(True)
+        plt.legend()
 
     else:
         plt.close(fig)
